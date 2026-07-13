@@ -10,6 +10,6 @@
 - Git：2.39.5（Apple Git-154）
 - Codex CLI：0.144.1
 - Conda：26.3.2，检查时未激活，`auto_activate_base` 为 false
-- 当前项目绝对路径：`/Users/lei/Developer/NanoServeLab`
+- 当前项目绝对路径：`/Users/lei/Desktop/NanoServeLab`
 
 > 该 Mac 环境用于代码开发、轻量测试、数据分析和文档，不用于 nano-vLLM CUDA 正式性能结论。当前未在仓库根目录运行 `uv sync`，也未安装 nano-vLLM 的 CUDA 依赖。
