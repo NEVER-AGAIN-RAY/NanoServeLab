@@ -25,3 +25,5 @@
 - [PR #2](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/2) 合并为 `b4da09f`，WSL2 已验证的 Scheduler 生命周期测试成为 baseline。
 - [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1) 合并为 `be4506a`，13 个核心模块的中文导读进入 `main`；差异仅为模块级 docstring。
 - 三个阶段 0 基础 PR 全部收口，开始准备结构化 Scheduler Step Snapshot 第一纵向切片。
+- 在分支 `codex/scheduler-step-snapshot` 完成第一切片实现提交 `f4e9457`：新增只读、不可变的 Scheduler/Sequence 快照和独立生命周期快照测试，未修改核心调度路径。
+- 通过 Tailscale SSH 在 WSL2 既有 Python 3.12.3 `.venv` 中运行全部单元测试；原生命周期测试与新 Snapshot 测试共 2 个，全部通过，结果为 `OK`。

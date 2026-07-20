@@ -66,9 +66,10 @@
 
 ### 当前活动工作
 
-- 2026-07-20 核对时没有开放 PR。
-- 下一实现目标已经确定为“结构化 Scheduler Step Snapshot（第一纵向切片）”，尚未开始代码实现。
-- 创建新分支前仍须实时复核 `main` 和 GitHub 状态。
+- “结构化 Scheduler Step Snapshot（第一纵向切片）”已在分支 `codex/scheduler-step-snapshot` 完成首个实现提交 `f4e9457`。
+- 改动只新增只读快照模块与独立 CPU 测试，没有修改 Scheduler、BlockManager、LLMEngine、Config 或原生命周期测试。
+- WSL2 既有 Python 3.12.3 `.venv` 已运行全部单元测试：2 个测试均通过，结果为 `OK`。
+- 下一步是创建独立 Draft PR，并根据快照逐段复盘观察边界；合并前不开始第二切片。
 
 ### 环境与阻塞
 
@@ -159,9 +160,9 @@
 
 ## 立即下一步
 
-1. 从最新 `main` 创建 `codex/scheduler-step-snapshot`。
-2. 只实现纯读取快照模块及其 CPU 测试，不修改 Scheduler 策略。
-3. 在 WSL2 既有 `.venv` 中验证后，创建独立 Draft PR 并进行下一轮理解复盘。
+1. 为 `codex/scheduler-step-snapshot` 创建独立 Draft PR，记录两个 WSL2 单元测试的真实通过结果。
+2. 逐段复盘 `after_schedule` 与 `after_postprocess` 快照，确认字段与生命周期语义一致。
+3. 完成理解检查后收口第一切片，再决定是否设计可选的 `LLMEngine.step()` observer。
 
 ## 已推迟、当前不决策
 
