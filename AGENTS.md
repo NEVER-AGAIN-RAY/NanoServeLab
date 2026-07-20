@@ -1,5 +1,16 @@
 # NanoServeLab Development Guidelines
 
+## Project Navigation
+
+At the beginning of every new conversation or AI handoff:
+
+1. Read `docs/project/README.md` first. It is the single source of truth for the current stage, verified progress, active work, and next implementation target.
+2. Read only the stable or historical documents linked from that entry when the task requires them.
+3. Verify live Git and pull-request state before changing code; the status document records the last verified snapshot, not a substitute for live checks.
+4. Do not repeat completed source analysis or validated tests unless relevant code, dependencies, or environment facts changed.
+
+Whenever a milestone, validation result, blocker, or next target changes, update `docs/project/README.md` and append the durable event to `docs/project/PROJECT_LOG.md` in the same scoped change. Do not create competing current-status documents elsewhere.
+
 ## Project Goal
 
 NanoServeLab is a lightweight LLM inference evaluation and scheduling research project built on the official GeeeekExplorer/nano-vllm engine.
