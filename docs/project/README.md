@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-20（Asia/Shanghai）
 - 当前阶段：阶段 0 后半段——Scheduler baseline 理解与可观测性基础
-- 当前主线：先建立可验证的观察能力，再讨论调度策略变化
+- 当前主线：实现结构化 Scheduler Step Snapshot，再讨论调度策略变化
 - 性能结论：无；尚未运行正式 CUDA benchmark
 
 ## 60 秒恢复流程
@@ -37,7 +37,7 @@
 
 ### 仓库基线
 
-- `main`：`f934e47`（NanoServeLab 研究工作区初始化后的当前基线）
+- `main` 已包含项目导航、Scheduler 生命周期测试和中文核心模块导读；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
 - 上游基线：`GeeeekExplorer/nano-vllm` 的 `bb823b3`
 - `origin` 是 `NEVER-AGAIN-RAY/NanoServeLab`；`upstream` 只用于跟踪官方仓库，禁止推送。
 - 根目录 `README.md` 保留上游 nano-vLLM 说明；NanoServeLab 自有文档统一放在 `docs/project/`。
@@ -56,15 +56,19 @@
 - 上述测试已在 Windows WSL2 的既有 Python 3.12.3 `.venv` 中通过：`Ran 1 test / OK`。
 - 项目所有者已完成逐段复盘，能够解释最小请求生命周期以及 `num_tokens = num_cached_tokens + 1` 的原因。
 
-### 正在进行
+### 已合并里程碑
 
 | 工作项 | 状态 | 证据 | 说明 |
 | --- | --- | --- | --- |
-| 中文核心模块导读 | Draft PR | [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1)，commit `41e0433` | 独立于测试分支，尚未进入 `main` |
-| Scheduler 生命周期测试 | Draft PR | [PR #2](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/2)，commit `785f0a4` | WSL2 已验证，尚未进入 `main` |
-| 项目导航与文档治理 | 本分支完成 | `codex/project-navigation` | 统一当前入口、稳定章程和历史日志 |
+| 项目导航与文档治理 | 已合并 | [PR #3](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/3)，merge `9230325` | 统一当前入口、稳定章程和历史日志 |
+| Scheduler 生命周期测试 | 已合并 | [PR #2](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/2)，merge `b4da09f` | WSL2 已验证，已成为 `main` baseline |
+| 中文核心模块导读 | 已合并 | [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1)，merge `be4506a` | 仅模块级 docstring，无行为变化 |
 
-PR 状态属于 2026-07-20 的核对结果；执行合并、继续开发或创建依赖分支前必须实时复核。
+### 当前活动工作
+
+- 2026-07-20 核对时没有开放 PR。
+- 下一实现目标已经确定为“结构化 Scheduler Step Snapshot（第一纵向切片）”，尚未开始代码实现。
+- 创建新分支前仍须实时复核 `main` 和 GitHub 状态。
 
 ### 环境与阻塞
 
@@ -124,16 +128,15 @@ PR 状态属于 2026-07-20 的核对结果；执行合并、继续开发或创�
 
 ### 实施顺序
 
-1. 先复核并合并或明确处理 Draft PR #2，使生命周期测试成为可依赖的 baseline。
-2. 从更新后的 `main` 创建 `codex/scheduler-step-snapshot`，不依赖中文导读 PR。
-3. 定义不可变的 Step、Sequence 快照数据结构和无副作用采集函数。
-4. 用三步生命周期测试验证以下状态序列：
+1. 从已包含生命周期 baseline 的 `main` 创建 `codex/scheduler-step-snapshot`。
+2. 定义不可变的 Step、Sequence 快照数据结构和无副作用采集函数。
+3. 用三步生命周期测试验证以下状态序列：
    - 首轮 Prefill 后仍为 `WAITING`，缓存进度为 4；
    - 次轮 Prefill 后进入 `RUNNING`，生成第一个 Completion Token；
    - Decode 后达到 `max_tokens`，进入 `FINISHED`，KV Block 全部释放。
-5. 保留原生命周期测试作为行为基线，确认它未被改写成只测试快照实现。
-6. 在 WSL2 既有 `.venv` 中运行全部单元测试，保存真实输出后创建独立 Draft PR。
-7. 由项目所有者根据快照逐步复述状态变化；理解通过后，再决定是否做第二切片的可选 `LLMEngine.step()` observer。
+4. 保留原生命周期测试作为行为基线，确认它未被改写成只测试快照实现。
+5. 在 WSL2 既有 `.venv` 中运行全部单元测试，保存真实输出后创建独立 Draft PR。
+6. 由项目所有者根据快照逐步复述状态变化；理解通过后，再决定是否做第二切片的可选 `LLMEngine.step()` observer。
 
 ### 完成标准
 
@@ -156,9 +159,9 @@ PR 状态属于 2026-07-20 的核对结果；执行合并、继续开发或创�
 
 ## 立即下一步
 
-1. 用户检查 Draft PR #2 的文件范围与说明，决定何时将其转为 Ready 或合并。
-2. PR #2 处理完成后，按上述第一切片建立 Scheduler Step Snapshot。
-3. PR #1 可独立审阅，不阻塞快照目标，但开始新分支前应确认 `main` 的实际合并状态。
+1. 从最新 `main` 创建 `codex/scheduler-step-snapshot`。
+2. 只实现纯读取快照模块及其 CPU 测试，不修改 Scheduler 策略。
+3. 在 WSL2 既有 `.venv` 中验证后，创建独立 Draft PR 并进行下一轮理解复盘。
 
 ## 已推迟、当前不决策
 
