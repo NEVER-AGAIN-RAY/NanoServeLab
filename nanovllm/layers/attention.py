@@ -1,3 +1,22 @@
+"""支持 Paged KV Cache 的核心 Attention 实现。
+
+主要部分：
+1. ``store_kvcache_kernel``：Triton Kernel，依据 ``slot_mapping`` 把当前
+   Token 的 K/V 写入预分配的物理 KV Cache。
+2. ``store_kvcache``：检查 Tensor 布局并启动写缓存 Kernel。
+3. ``Attention.forward``：从全局 Context 读取本轮模式和 Block Table，
+   在 Prefill 与 Decode 之间选择不同的 Flash Attention 路径。
+
+关键输入：
+- ``slot_mapping`` 决定写入位置；-1 表示该槽位不写缓存。
+- ``block_tables`` 决定每个请求如何访问非连续的物理 KV Block。
+- Prefill 使用变长 q/k 序列；Decode 每个请求只处理一个新 Token，并读取
+  已缓存的完整上下文。
+
+这是 Scheduler/BlockManager 的逻辑决策真正落到 GPU KV Tensor 的位置，
+修改 Block 分配、Prefix Cache 或混合批处理时必须同时验证这里的契约。
+"""
+
 import torch
 from torch import nn
 import triton

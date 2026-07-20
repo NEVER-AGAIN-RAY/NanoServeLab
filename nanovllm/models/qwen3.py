@@ -1,3 +1,20 @@
+"""面向推理执行重写的 Qwen3 Causal LM 模型结构。
+
+本文件保持 Qwen3 的 Transformer 计算拓扑，但使用 nano-vLLM 自己的并行
+Linear、Paged Attention、RoPE、RMSNorm 和词表并行输出头。
+
+代码层次：
+- ``Qwen3Attention``：QKV 投影、Q/K Norm、RoPE、Paged Attention、输出投影。
+- ``Qwen3MLP``：融合 gate/up 投影、SiluAndMul、down 投影。
+- ``Qwen3DecoderLayer``：Pre-Norm Attention 与 MLP 残差结构。
+- ``Qwen3Model``：Embedding、Decoder Layer 堆叠和最终 Norm。
+- ``Qwen3ForCausalLM``：基础模型、LM Head，以及 Hugging Face 权重到融合参数
+  的 ``packed_modules_mapping``。
+
+关键并行参数是 ``num_heads``、``num_kv_heads``、``head_dim`` 和 TP world
+size。KV Cache 本身由 ModelRunner 分配，再注入每层 ``Attention`` 实例。
+"""
+
 import torch
 from torch import nn
 import torch.distributed as dist

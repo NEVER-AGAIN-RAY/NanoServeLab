@@ -1,3 +1,24 @@
+"""KV Cache 的 CPU 侧 Block 分配器与 Prefix Cache 元数据管理器。
+
+本文件不保存 GPU 上的 K/V Tensor；它维护与物理 KV Cache 相同编号的 Block
+元数据，并把每个 Sequence 的逻辑 Block 映射到物理 ``block_id``。
+
+核心对象：
+- ``Block``：记录 ``block_id``、共享引用计数、链式 Hash 和 Token 内容。
+- ``free_block_ids`` / ``used_block_ids``：物理 Block 的空闲与占用集合。
+- ``hash_to_block_id``：完整 Prefix Block 的 Hash 到物理 Block 的索引。
+
+主要流程：
+1. ``can_allocate()``：匹配可复用的完整前缀并检查剩余容量。
+2. ``allocate()``：共享命中 Block，并为其余逻辑 Block 分配物理空间。
+3. ``can_append()`` / ``may_append()``：Decode 跨越 Block 边界时按需扩容。
+4. ``hash_blocks()``：将本轮新完成的完整 Block 加入 Prefix Cache。
+5. ``deallocate()``：减少引用计数；空闲 Block 的 Hash 会保留到被覆盖为止。
+
+重要约束：Prefix Cache 只共享不可再写的完整 Block；引用计数、Block Table
+和 GPU KV Tensor 的物理编号必须始终一致。
+"""
+
 from collections import deque
 import xxhash
 import numpy as np
