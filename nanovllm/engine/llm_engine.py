@@ -1,3 +1,21 @@
+"""LLM 推理引擎的总编排入口。
+
+核心职责：
+- 接收文本或 Token 请求，构造 ``Sequence`` 并交给 ``Scheduler``。
+- 初始化 tokenizer、张量并行进程、主 rank 的 ``ModelRunner`` 和 Scheduler。
+- 在 ``step()`` 中串起“调度 -> GPU 执行 -> 状态提交”的完整请求生命周期。
+- 在 ``generate()`` 中循环 step，直到所有请求完成并解码输出。
+
+重要成员：
+- ``model_runner``：执行模型前向、KV Cache 写入和采样。
+- ``scheduler``：选择本轮请求并维护 waiting/running 状态。
+- ``ps`` / ``events``：张量并行从属进程及其同步事件。
+
+阅读顺序：``add_request()`` -> ``step()`` -> ``generate()``。注意 ModelRunner
+会先根据 GPU 显存写回 ``config.num_kvcache_blocks``，随后 Scheduler 才能创建
+与物理 KV Cache 容量一致的 BlockManager。
+"""
+
 import atexit
 from dataclasses import fields
 from time import perf_counter

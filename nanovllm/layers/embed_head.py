@@ -1,3 +1,16 @@
+"""词表并行 Embedding 与语言模型输出头。
+
+``VocabParallelEmbedding`` 按 Tensor Parallel rank 切分词表权重：Embedding
+阶段通过 all-reduce 合并各 rank 的局部结果。
+
+``ParallelLMHead`` 使用相同的词表分片计算 logits：Prefill 时只选取每个
+Sequence 本轮最后一个 Query 的隐藏状态，避免为所有 Prompt Token 计算
+输出 logits；多 rank 时 gather 到 rank 0 后拼成完整词表分布。
+
+关键成员：``tp_rank``、``tp_size``、当前 rank 的词表起止范围，以及分片
+``weight``。本文件连接模型隐藏状态与最终采样器。
+"""
+
 import torch
 from torch import nn
 import torch.nn.functional as F

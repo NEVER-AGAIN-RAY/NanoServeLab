@@ -1,3 +1,13 @@
+"""将 Hugging Face Safetensors 权重装载到 nano-vLLM 模型结构。
+
+``load_model()`` 遍历模型目录中的 ``*.safetensors``，按参数名查找目标
+Parameter，并调用参数自带的 ``weight_loader``；没有专用加载器时直接复制。
+
+``packed_modules_mapping`` 用于处理推理模型中的融合参数，例如把独立的
+q/k/v 权重装入一个 QKVParallelLinear，或把 gate/up 权重装入融合 MLP。
+该文件只负责权重名称和分片映射，不参与请求调度或运行时 KV Cache 管理。
+"""
+
 import os
 from glob import glob
 import torch

@@ -1,3 +1,23 @@
+"""GPU 模型执行器：把 Scheduler 的批次决策转换成一次模型前向。
+
+核心职责：
+- 初始化分布式/NCCL、加载模型权重并在各 Tensor Parallel rank 上执行。
+- 预热模型，依据真实 GPU 显存计算并分配物理 KV Cache。
+- 分别准备 Prefill 与 Decode 的 input_ids、positions、slot_mapping 和
+  block_tables，再通过全局 Context 传给 Attention。
+- 执行模型、计算 logits、采样 Token，并可为 Decode 使用 CUDA Graph。
+
+关键成员：
+- ``rank`` / ``world_size``：当前 TP rank 与并行规模。
+- ``block_size`` / ``kv_cache``：物理 KV Cache 的块大小与 Tensor。
+- ``enforce_eager``：为 False 时允许 Decode 走 CUDA Graph。
+- ``shm`` / ``event``：rank 0 向其他进程广播方法调用和 Sequence 元数据。
+
+代码分区：多进程通信、模型预热与 KV 分配、Prefill/Decode 输入准备、模型
+执行与采样、CUDA Graph 捕获。该模块是 GPU 数据面，Scheduler/BlockManager
+则是 CPU 控制面；二者依靠相同的 Block ID 和 Sequence 进度保持同步。
+"""
+
 import pickle
 import torch
 import torch.distributed as dist
