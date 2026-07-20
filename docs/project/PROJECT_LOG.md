@@ -21,3 +21,7 @@
 - 记录环境待核查项：WSL2 中直接执行 `nvidia-smi` 曾返回 `command not found`；这不影响 CPU Scheduler 测试，但必须在 CUDA baseline 前解决或解释。
 - 建立 `docs/project/` 项目文档中心，清理根目录中过时且重复的当前状态，规定新会话以 `docs/project/README.md` 为唯一入口。
 - 决定下一实现目标为“结构化 Scheduler Step Snapshot”的第一纵向切片：只读采集、CPU 可测、不修改调度策略，不提前接入日志、指标或 CUDA benchmark。
+- [PR #3](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/3) 合并为 `9230325`，项目导航与文档治理正式进入 `main`。
+- [PR #2](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/2) 合并为 `b4da09f`，WSL2 已验证的 Scheduler 生命周期测试成为 baseline。
+- [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1) 合并为 `be4506a`，13 个核心模块的中文导读进入 `main`；差异仅为模块级 docstring。
+- 三个阶段 0 基础 PR 全部收口，开始准备结构化 Scheduler Step Snapshot 第一纵向切片。
