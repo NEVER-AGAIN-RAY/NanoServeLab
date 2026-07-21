@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-21（Asia/Shanghai）
 - 当前阶段：阶段 1——可复现 nano-vLLM baseline
-- 当前主线：白天已建立 baseline 实验合约与原始结果入口；今晚在 WSL2 先完成 GPU readiness，再做三次独立 CUDA 验证
+- 当前主线：WSL2 GPU readiness 与 nano-vLLM Prefill/Decode 冒烟已通过；下一步运行三次独立 CUDA baseline
 - 性能结论：无；尚未运行正式 CUDA benchmark
 
 ## 60 秒恢复流程
@@ -23,6 +23,7 @@
 | `docs/project/CHARTER.md` | 稳定的研究问题、阶段路线、项目边界和完成标准 | 仅在项目方向或阶段定义发生变化时更新 |
 | `docs/project/PROJECT_LOG.md` | 已发生的重要事件、验证结果和决策 | 按日期追加，不承载“当前状态” |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
+| `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
 
 维护原则：
@@ -74,68 +75,62 @@
 - 已补齐显式 Sampling seed（`--sampling-seed`，默认 0）：在创建 `LLM` 之前用 `torch.manual_seed` 与 `torch.cuda.manual_seed_all` 固定采样 RNG 起点，与只固定 synthetic workload 的 `--seed` 分开记录。未修改 `nanovllm/` 核心，未开启 `torch.use_deterministic_algorithms`；不声称所有 CUDA 算子位级确定。
 - `docs/experiments/baseline.md` 已固定模型、revision、workload、seed、sampling seed、warmup/测量边界、三次独立进程重复规则、原始结果格式与晚间入口。
 - Mac 已通过 benchmark 合约单测、新增 sampling seed 单测、Python 语法检查、CLI `--help` 和 diff whitespace 检查；没有运行模型、CUDA 或 benchmark。
+- WSL2 已确认 `/dev/dxg`、RTX 4060、PyTorch CUDA 和既有 `.venv` 可用；全部 9 个测试通过，`enforce_eager=False` 的 `LLM` 初始化、内部 warmup、CUDA Graph 捕获以及 Prefill→Decode 实际成功。
 - 2026-07-21 已重新 fetch 并核对：本地 `main` 与 `origin/main` 均为 `dbaeea1`；当前相关开放工作为 Draft PR #7。
 
 ### 环境与阻塞
 
 - Mac 只用于开发、轻量检查、数据分析和文档；不得在仓库根目录运行 `uv sync`，也不安装 CUDA-only 依赖。
-- Windows WSL2 既有虚拟环境可以运行 CPU Scheduler 单元测试。
-- WSL2 中直接执行 `nvidia-smi` 曾返回 `command not found`。这不阻塞当前 CPU 测试，但在阶段 1 CUDA baseline 前必须单独核查 GPU 驱动暴露与 PATH。
-- benchmark 合约目前只在 Mac 验证了纯 Python 边界；创建 `LLM`、warmup、CUDA 同步、三次完整 workload、原始 JSON 以及 sampling seed 在真实 CUDA 下的可复现性，都必须留到今晚 WSL2 验证。
+- Windows WSL2 readiness 已通过，精简环境事实记录于 `environment/wsl2.md`。
+- 此前 `nvidia-smi: command not found` 已确认为 PATH 问题：工具实际位于 `/usr/lib/wsl/lib/nvidia-smi`，GPU、驱动与 PyTorch CUDA 均正常，不需要修改系统配置。
+- 当前没有环境阻塞；尚未验证的是三次完整 256 请求 workload、原始 JSON 和 sampling seed 在三次真实运行中的一致性。
 - 当前没有可以报告的 benchmark 结果，也没有性能提升结论。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**WSL2 baseline validation gate**
+**Three-run CUDA baseline validation**
 
 ### 为什么现在做
 
-阶段 1 的 Mac 开发入口已经完成：实验变量、三次独立重复、计量边界和原始结果格式不再依赖临场决定。当前唯一未知项转为真实 WSL2/CUDA 验证。今晚先解释 `nvidia-smi` 失败层级；若 GPU 与 PyTorch 已就绪，再严格按 `docs/experiments/baseline.md` 运行三次。readiness 失败时保留诊断证据并停止，不临时改环境或 workload。
+实验合约、GPU readiness、PyTorch CUDA、模型文件和 nano-vLLM Prefill/Decode 路径都已实际验证。当前只剩阶段 1 的正式数据门槛：严格按 `docs/experiments/baseline.md` 用三个全新 Python 进程运行固定 workload，并保存、核对三份原始 JSON。
 
 ### 本轮要回答的问题
 
-- Windows/WSL2 是否把 RTX 4060 正确暴露给 Linux；
-- `/dev/dxg` 是否存在，WSL 内核与发行版信息是否正常；
-- `nvidia-smi` 是单纯不在 PATH，还是驱动接口确实不可用；
-- 既有 `.venv` 中 PyTorch 的版本、CUDA build、`torch.cuda.is_available()` 和设备名称；
-- 当前环境是否已经具备运行 nano-vLLM baseline 的条件，若不具备，阻塞位于哪一层；
-- 若 readiness 通过，三次全新进程是否都能完成 warmup、计量并生成 schema v1 原始 JSON。
+- 三次全新进程是否都能完成 warmup、256 请求计量并生成 schema v1 原始 JSON；
+- 三份结果的 commit、dirty、模型 revision、CUDA/GPU、workload seed、sampling seed 和其他参数是否完全一致；
+- 三次真实运行是否暴露新的 CUDA、内存、编译或稳定性问题。
 
 ### 明确范围
 
-今晚只做只读诊断和固定 baseline 验证：
+本轮只做固定 baseline 验证：
 
 - 不安装或升级 Windows 驱动、CUDA Toolkit、PyTorch 或项目依赖；
 - 不修改 PATH、WSL 配置、系统服务或仓库代码；
-- readiness 未通过时不运行 benchmark；通过后只运行已经固定的 baseline，不临时改变参数；
+- 只运行已经固定的 baseline，不临时改变参数或选择性丢弃较慢结果；
 - 不把机器地址、令牌或大段原始系统输出提交进仓库。
 
 如诊断确认需要安装或修改系统配置，必须先记录根因与最小修复方案，再单独获得用户授权。
 
 ### 实施顺序
 
-1. 在 Windows/WSL2 在线后，只读采集发行版、内核、GPU 设备节点、NVIDIA 工具路径和既有 `.venv` 的 PyTorch/CUDA 可见性。
-2. 将 readiness 证据归类为：GPU 暴露正常、仅 PATH 问题、驱动/WSL 暴露问题、或 Python/PyTorch 环境问题。
-3. 仅在 readiness 通过后，按 `docs/experiments/baseline.md` 用三个全新 Python 进程运行固定 workload。
-4. 核对三个成功运行的原始 JSON 的 commit、dirty、模型 revision、CUDA/GPU、workload 和 run number；失败时保留命令错误证据并停止。
-5. 在 `environment/wsl2.md` 记录精简环境事实，并更新本入口与项目日志；原始结果留在 `results/raw/`，不粘贴进状态文档。
+1. 将 WSL 仓库同步到 Draft PR #7 的最新 clean commit。
+2. 按 `docs/experiments/baseline.md` 用三个全新 Python 进程运行固定 workload，模型 revision 使用 `c1899de289a04d12100db370d81485cdf75e47ca`。
+3. 核对三个成功运行的原始 JSON 的 commit、dirty、模型 revision、CUDA/GPU、workload 和 run number；失败时保留命令错误证据并停止。
+4. 原始结果留在 `results/raw/` 并另行备份；只把验证结论更新到本入口与项目日志。
 
 ### 完成标准
 
-- 能明确回答 RTX 4060 是否对 WSL2 和 PyTorch 可见；
-- 能解释 `nvidia-smi` 失败发生在哪一层；
-- 所有结论都有真实命令证据，不把推测写成事实；
-- 若环境未就绪，给出一个最小、分层的修复建议，但不擅自执行；
-- 若环境就绪，三次独立运行均生成配置一致的 schema v1 原始 JSON；
+- 三次独立运行均生成配置一致的 schema v1 原始 JSON；
+- 所有环境和运行结论都有真实命令与原始文件证据，不把推测写成事实；
 - 不根据单次结果或未汇总的三次结果声称性能提升。
 
 ## 立即下一步
 
-1. 今晚 WSL2 在线后，先执行只读 GPU readiness audit。
-2. readiness 通过则按 baseline 合约运行三次；不通过则停止并记录分层阻塞。
-3. 核对并保留原始 JSON，记录 `environment/wsl2.md`，再更新本入口与项目日志。
+1. 将本轮 readiness 文档提交推送，并让 WSL 仓库 fast-forward 到相同 clean commit。
+2. 按 baseline 合约运行三个全新进程；任一次失败则停止并保留错误证据。
+3. 核对、备份三份原始 JSON，再更新本入口与项目日志。
 
 ## 已推迟、当前不决策
 

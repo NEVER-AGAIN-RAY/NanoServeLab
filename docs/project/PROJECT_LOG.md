@@ -40,3 +40,6 @@
 - 创建 [Draft PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7)；明确在 WSL2 readiness、warmup、三次全新进程运行与原始 JSON 均验证前不得转 Ready 或合并。
 - 在 `bench.py` 补齐显式 Sampling seed（`--sampling-seed`，默认 0）：新增 `set_sampling_seed()` 用 `torch.manual_seed` 与 `torch.cuda.manual_seed_all` 在创建 `LLM` 之前固定采样 RNG，并在 `workload.sampling.seed` 记录；`--seed` 仍只固定 synthetic workload。未修改 `nanovllm/` 核心，未开启 `torch.use_deterministic_algorithms`，不声称所有 CUDA 算子位级确定。
 - 新增 4 个 sampling seed 单测（fake/mock torch 验证 RNG 调用、CLI 默认为 0、显式覆盖默认）；Mac 验证 7 个单测全部通过，`py_compile`、`bench.py --help`、`git diff --check` 均通过；真实 CUDA 采样可复现性仍需今晚 WSL2 验证。
+- 完成 WSL2 GPU readiness audit：Ubuntu 24.04.4 的 `/dev/dxg` 存在，RTX 4060 Laptop GPU、驱动 555.97、PyTorch 2.4.0+cu124 和 CUDA 12.4 实际可用；此前 `nvidia-smi: command not found` 确认为 `/usr/lib/wsl/lib` 未进入 PATH，而非驱动故障。
+- WSL 仓库同步到 Draft PR #7 的 `8f63bcd` 后，全部 9 个单元测试通过；Qwen3-0.6B 的 9 个下载 metadata 一致指向 revision `c1899de289a04d12100db370d81485cdf75e47ca`。
+- 实际创建 `LLM(enforce_eager=False, max_model_len=4096)`，完成内部 warmup 与 CUDA Graph 捕获初始化；1 Token Prefill 冒烟和覆盖一轮 Decode 图回放的 2 Token 冒烟均成功，退出码为 0。未运行正式 baseline，下一目标收敛为三个全新进程的固定 workload 与原始 JSON 验证。
