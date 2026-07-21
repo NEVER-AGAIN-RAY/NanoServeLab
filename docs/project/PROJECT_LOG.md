@@ -44,3 +44,9 @@
 - WSL 仓库同步到 Draft PR #7 的 `8f63bcd` 后，全部 9 个单元测试通过；Qwen3-0.6B 的 9 个下载 metadata 一致指向 revision `c1899de289a04d12100db370d81485cdf75e47ca`。
 - 实际创建 `LLM(enforce_eager=False, max_model_len=4096)`，完成内部 warmup 与 CUDA Graph 捕获初始化；1 Token Prefill 冒烟和覆盖一轮 Decode 图回放的 2 Token 冒烟均成功，退出码为 0。未运行正式 baseline，下一目标收敛为三个全新进程的固定 workload 与原始 JSON 验证。
 - WSL 直连 GitHub HTTPS 在本次核对时超时；未修改网络或代理，改用 Mac 生成并验证的最小 Git bundle 将 readiness 文档安全 fast-forward 到 WSL。该问题不阻塞当前 baseline，但后续直接 fetch 前需要重新核查网络路径。
+- 在 clean commit `fb94f6b46213174718c2c89d11c86180712f3b53` 上完成正式 baseline 预检：GPU 无 compute process，结果目录为空，10 个模型 metadata 一致指向 revision `c1899de289a04d12100db370d81485cdf75e47ca`，固定 workload 为 256 请求、142,827 输入 Token 和 133,966 请求输出 Token。
+- 按相同参数串行启动三个全新 Python/`LLM` 进程，三次均正常退出并生成 schema v1 JSON；逐次结果为 1019.165630、1013.041928、1011.091819 output Token/s，对应 elapsed 131.446740、132.241318、132.496374 秒，没有失败或结果剔除。
+- 三次输出吞吐的平均值为 1014.433126 Token/s，样本标准差为 4.212859 Token/s，变异系数为 0.415292%。该值只作为当前固定条件的参考 baseline，没有对照组，不构成性能提升结论。
+- 三份原始 JSON 已从 WSL 备份到 Mac 的 Git 忽略目录，逐文件 SHA-256 完全一致；另记录模型权重 SHA-256 和固定 workload 规范化指纹。完整证据链、命令、逐次数据、统计方法、限制与后续使用规则写入 `docs/experiments/baseline-results-2026-07-21.md`。
+- 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都成功完成；本轮没有修改 cache limit。stdout/stderr 未单独归档、运行期间未连续采集热状态等限制已如实记录。
+- 阶段 1 的正式退出条件已经满足；唯一下一实现目标切换为阶段 2 指标边界合约，先定义 TTFT、TPOT、E2E 与 Queue Time 的生命周期事件、公式和 CPU 可测不变量，不提前改变调度策略或运行新 benchmark。

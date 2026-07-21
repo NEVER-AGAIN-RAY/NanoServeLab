@@ -15,7 +15,7 @@
 - **Workload seed（`--seed`，固定 0）**：只喂给 Python `random.Random`，用来生成 256 条 synthetic 请求的 prompt token id、输入长度和输出长度。它固定的是 benchmark 的输入与输出形状，与模型内部的采样随机无关。同一 workload seed 下，三条进程看到的请求数据逐字节一致。
 - **Sampling seed（`--sampling-seed`，固定 0）**：喂给 PyTorch 的 `torch.manual_seed` 和（CUDA 可用时）`torch.cuda.manual_seed_all`，固定 nano-vLLM Sampler 采样时的 CPU/CUDA RNG 起点。它必须在创建 `LLM` 之前设置，使三条新进程经历一致的 RNG 消耗顺序，覆盖 LLM 初始化、内部 warmup、CUDA Graph 捕获和显式 warmup。
 
-设置 sampling seed 只是把采样 RNG 的起点固定到同一状态，不等于保证所有 CUDA 运算位级确定。`bench.py` 不调用 `torch.use_deterministic_algorithms`；非确定性的 CUDA kernel、原子归约以及并发 kernel 的执行顺序仍可能让两次运行的中间张量不完全一致。阶段 1 只要求三条进程的 RNG 起点和消耗顺序一致，真实的 CUDA 位级可复现性仍需今晚 WSL2 验证。
+设置 sampling seed 只是把采样 RNG 的起点固定到同一状态，不等于保证所有 CUDA 运算位级确定。`bench.py` 不调用 `torch.use_deterministic_algorithms`；非确定性的 CUDA kernel、原子归约以及并发 kernel 的执行顺序仍可能让两次运行的中间张量不完全一致。阶段 1 只要求三条进程的 RNG 起点和消耗顺序一致，不把生成 Token 的位级一致性作为本 baseline 的结论；若后续研究该问题，必须另建保存输出内容的专项实验。
 
 ## 固定变量
 
@@ -58,7 +58,7 @@ JSON schema 版本当前为 1，包含：
 
 一次 JSON 只是一条原始观测，不代表性能结论。三次结果都成功并核对配置一致后，才允许另做汇总；阶段 1 不删除失败或较慢的运行。
 
-## 今晚 WSL2 运行入口
+## WSL2 运行入口
 
 先完成只读 GPU readiness audit，并确认 `torch.cuda.is_available()` 为真。不要安装或升级依赖作为本命令的一部分。将 `<MODEL_REVISION>` 替换为本地模型对应的精确 revision，然后在仓库根目录、既有 `.venv` 中执行：
 
@@ -74,7 +74,7 @@ done
 
 如果任一次失败，停止并保存错误，不用安装依赖或更改实验参数来“凑齐”三次。运行后逐个核对 JSON 中的 commit、dirty、模型 revision、CUDA、GPU、workload 和 run number；只有三次配置相同且工作区干净，才能把它们视为同一 baseline 重复组。
 
-## 今晚必须验证、Mac 无法代替的项目
+## 必须在 WSL2 验证、Mac 无法代替的项目
 
 - WSL2 是否能看到 RTX 4060，PyTorch CUDA 是否可用；
 - 当前 CUDA 依赖能否创建 nano-vLLM `LLM` 并完成 warmup；
@@ -82,4 +82,4 @@ done
 - 三个原始 JSON 是否实际生成且元数据正确；
 - CUDA 同步、计量边界和吞吐计算是否在真实运行中无异常。
 
-在完成这些验证前，本切片只代表 Mac 上的语法、CLI 和确定性 workload 合约通过，不代表 CUDA baseline 已跑通，更不代表有性能提升。
+这些项目的实时完成状态不写入本合约，统一查看 `docs/project/README.md`；每组正式数据另建结果记录。对任何尚未完成上述验证的新 commit 或新环境，只能声称 Mac 上的语法、CLI 和确定性 workload 合约通过，不能声称 CUDA baseline 已跑通，更不能声称有性能提升。
