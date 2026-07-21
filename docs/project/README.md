@@ -83,7 +83,7 @@
 - Mac 只用于开发、轻量检查、数据分析和文档；不得在仓库根目录运行 `uv sync`，也不安装 CUDA-only 依赖。
 - Windows WSL2 readiness 已通过，精简环境事实记录于 `environment/wsl2.md`。
 - 此前 `nvidia-smi: command not found` 已确认为 PATH 问题：工具实际位于 `/usr/lib/wsl/lib/nvidia-smi`，GPU、驱动与 PyTorch CUDA 均正常，不需要修改系统配置。
-- 当前没有环境阻塞；尚未验证的是三次完整 256 请求 workload、原始 JSON 和 sampling seed 在三次真实运行中的一致性。
+- 当前没有 baseline 运行阻塞；WSL 直连 GitHub HTTPS 暂时超时，但所需 commit 已通过 Mac 的验证 bundle 同步。尚未验证的是三次完整 256 请求 workload、原始 JSON 和 sampling seed 在三次真实运行中的一致性。
 - 当前没有可以报告的 benchmark 结果，也没有性能提升结论。
 
 ## 全局决策：下一实现目标

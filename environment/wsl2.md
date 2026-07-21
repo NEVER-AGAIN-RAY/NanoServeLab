@@ -44,3 +44,4 @@
 
 - WSL 内核日志中存在少量 `dxg` 查询警告，但在最小 CUDA 运算和 nano-vLLM Prefill/Decode 冒烟期间没有导致失败。若正式 baseline 异常，应优先保留并关联当时的内核日志；当前不据此修改驱动或 WSL 配置。
 - 不需要为了方便调用 `nvidia-smi` 修改 PATH；readiness 与后续诊断可继续使用绝对路径。
+- 本次核对时，WSL 到 GitHub HTTPS 的连接停在 `SYN-SENT` 并超时；这不阻塞已经同步到本地的 baseline，但会阻塞后续直接 `git fetch`。本轮没有修改 Windows/WSL 网络或代理，而是从 Mac 通过已验证的 Git bundle 同步单个文档 commit。
