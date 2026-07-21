@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-21（Asia/Shanghai）
-- 当前阶段：阶段 1 入口——WSL2 GPU readiness 与 baseline 准备
-- 当前主线：先确认 GPU、驱动和 PyTorch CUDA 可见性，再运行 nano-vLLM baseline
+- 当前阶段：阶段 1——可复现 nano-vLLM baseline
+- 当前主线：白天已建立 baseline 实验合约与原始结果入口；今晚在 WSL2 先完成 GPU readiness，再做三次独立 CUDA 验证
 - 性能结论：无；尚未运行正式 CUDA benchmark
 
 ## 60 秒恢复流程
@@ -69,26 +69,29 @@
 
 ### 当前活动工作
 
-- [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5) 已合并，Snapshot 第一纵向切片完成。
-- 2026-07-21 核对时没有开放 PR，本地与远端 `main` 已同步。
-- 下一目标切换为 WSL2 GPU readiness audit；目前只做诊断，不修改驱动、CUDA、依赖或系统配置。
+- 独立分支 `codex/reproducible-baseline-contract` 正在完成阶段 1 第一切片。
+- 已保留官方 `bench.py` 的 synthetic workload 与推理路径，只增加显式实验参数、确定性 workload 构造、单次进程计量、环境元数据和每次运行一个原始 JSON。
+- `docs/experiments/baseline.md` 已固定模型、revision、workload、seed、warmup/测量边界、三次独立进程重复规则、原始结果格式与晚间入口。
+- Mac 已通过新增 benchmark 合约单测、Python 语法检查、CLI `--help` 和 diff whitespace 检查；没有运行模型、CUDA 或 benchmark。
+- 2026-07-21 开始任务时 `HEAD`、本地 `main` 与 `origin/main` 均为 `dbaeea1`；`gh` 本地凭据失效，因此开放 PR 列表需要在恢复认证后再次核对。
 
 ### 环境与阻塞
 
 - Mac 只用于开发、轻量检查、数据分析和文档；不得在仓库根目录运行 `uv sync`，也不安装 CUDA-only 依赖。
 - Windows WSL2 既有虚拟环境可以运行 CPU Scheduler 单元测试。
 - WSL2 中直接执行 `nvidia-smi` 曾返回 `command not found`。这不阻塞当前 CPU 测试，但在阶段 1 CUDA baseline 前必须单独核查 GPU 驱动暴露与 PATH。
+- benchmark 合约目前只在 Mac 验证了纯 Python 边界；创建 `LLM`、warmup、CUDA 同步、三次完整 workload 和原始 JSON 都必须留到今晚 WSL2 验证。
 - 当前没有可以报告的 benchmark 结果，也没有性能提升结论。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**WSL2 GPU readiness audit**
+**WSL2 baseline validation gate**
 
 ### 为什么现在做
 
-阶段 0 已经建立请求生命周期 baseline、中文导读和结构化观察基础。进入正式 nano-vLLM baseline 前，当前最直接的未知项是 WSL2 中 `nvidia-smi` 曾返回 `command not found`。在 GPU 可见性未确认前继续扩展 observer、指标或 benchmark 都会增加无效工作。
+阶段 1 的 Mac 开发入口已经完成：实验变量、三次独立重复、计量边界和原始结果格式不再依赖临场决定。当前唯一未知项转为真实 WSL2/CUDA 验证。今晚先解释 `nvidia-smi` 失败层级；若 GPU 与 PyTorch 已就绪，再严格按 `docs/experiments/baseline.md` 运行三次。readiness 失败时保留诊断证据并停止，不临时改环境或 workload。
 
 ### 本轮要回答的问题
 
@@ -96,26 +99,27 @@
 - `/dev/dxg` 是否存在，WSL 内核与发行版信息是否正常；
 - `nvidia-smi` 是单纯不在 PATH，还是驱动接口确实不可用；
 - 既有 `.venv` 中 PyTorch 的版本、CUDA build、`torch.cuda.is_available()` 和设备名称；
-- 当前环境是否已经具备运行 nano-vLLM baseline 的条件，若不具备，阻塞位于哪一层。
+- 当前环境是否已经具备运行 nano-vLLM baseline 的条件，若不具备，阻塞位于哪一层；
+- 若 readiness 通过，三次全新进程是否都能完成 warmup、计量并生成 schema v1 原始 JSON。
 
 ### 明确范围
 
-本轮只做只读诊断和事实记录：
+今晚只做只读诊断和固定 baseline 验证：
 
 - 不安装或升级 Windows 驱动、CUDA Toolkit、PyTorch 或项目依赖；
 - 不修改 PATH、WSL 配置、系统服务或仓库代码；
-- 不运行 nano-vLLM benchmark，不生成性能结论；
+- readiness 未通过时不运行 benchmark；通过后只运行已经固定的 baseline，不临时改变参数；
 - 不把机器地址、令牌或大段原始系统输出提交进仓库。
 
 如诊断确认需要安装或修改系统配置，必须先记录根因与最小修复方案，再单独获得用户授权。
 
 ### 实施顺序
 
-1. 通过既有 Tailscale SSH 只读采集 WSL 发行版、内核、GPU 设备节点和 NVIDIA 工具路径。
-2. 使用既有 `.venv` 读取 Python、PyTorch、CUDA build 与设备可见性，不安装依赖。
-3. 将证据归类为：GPU 暴露正常、仅 PATH 问题、驱动/WSL 暴露问题、或 Python/PyTorch 环境问题。
-4. 在 `environment/wsl2.md` 记录精简且可复现的环境事实，不保存敏感连接信息。
-5. 更新本入口与项目日志，给出是否可以进入 baseline 的明确结论。
+1. 在 Windows/WSL2 在线后，只读采集发行版、内核、GPU 设备节点、NVIDIA 工具路径和既有 `.venv` 的 PyTorch/CUDA 可见性。
+2. 将 readiness 证据归类为：GPU 暴露正常、仅 PATH 问题、驱动/WSL 暴露问题、或 Python/PyTorch 环境问题。
+3. 仅在 readiness 通过后，按 `docs/experiments/baseline.md` 用三个全新 Python 进程运行固定 workload。
+4. 核对三个成功运行的原始 JSON 的 commit、dirty、模型 revision、CUDA/GPU、workload 和 run number；失败时保留命令错误证据并停止。
+5. 在 `environment/wsl2.md` 记录精简环境事实，并更新本入口与项目日志；原始结果留在 `results/raw/`，不粘贴进状态文档。
 
 ### 完成标准
 
@@ -123,19 +127,21 @@
 - 能解释 `nvidia-smi` 失败发生在哪一层；
 - 所有结论都有真实命令证据，不把推测写成事实；
 - 若环境未就绪，给出一个最小、分层的修复建议，但不擅自执行；
-- 不产生 benchmark 或性能提升结论。
+- 若环境就绪，三次独立运行均生成配置一致的 schema v1 原始 JSON；
+- 不根据单次结果或未汇总的三次结果声称性能提升。
 
 ## 立即下一步
 
-1. 使用 `diagnose` 流程对在线 WSL2 节点执行只读 GPU readiness audit。
-2. 记录 `environment/wsl2.md`，区分已验证事实、阻塞和待用户授权的修复。
-3. 根据诊断结果决定进入 baseline，或先做一个独立环境修复任务。
+1. 今晚 WSL2 在线后，先执行只读 GPU readiness audit。
+2. readiness 通过则按 baseline 合约运行三次；不通过则停止并记录分层阻塞。
+3. 核对并保留原始 JSON，记录 `environment/wsl2.md`，再更新本入口与项目日志。
 
 ## 已推迟、当前不决策
 
 - Snapshot 是否接入 `LLMEngine.step()` 的可选 observer；
 - 是否导出 JSONL 作为实验原始 trace；
-- TTFT、TPOT、Queue Time 的计时边界与时钟选择；
+- TTFT、TPOT、Queue Time 的计时边界；
+- baseline 三次原始结果的统计汇总与可视化；
 - 第一种自定义调度评分公式。
 
 这些问题等待 GPU baseline 环境就绪后再分别决策，当前不提前实现。
