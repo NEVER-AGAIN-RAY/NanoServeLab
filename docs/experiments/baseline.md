@@ -8,6 +8,15 @@
 
 本切片没有修改 `LLM`、Scheduler、KV Cache 或模型执行路径。`bench.py` 只增加实验参数、边界校验、环境元数据和原始结果落盘。
 
+## Workload seed 与 Sampling seed 的区别
+
+阶段 1 把随机性拆成两类种子，职责不重叠：
+
+- **Workload seed（`--seed`，固定 0）**：只喂给 Python `random.Random`，用来生成 256 条 synthetic 请求的 prompt token id、输入长度和输出长度。它固定的是 benchmark 的输入与输出形状，与模型内部的采样随机无关。同一 workload seed 下，三条进程看到的请求数据逐字节一致。
+- **Sampling seed（`--sampling-seed`，固定 0）**：喂给 PyTorch 的 `torch.manual_seed` 和（CUDA 可用时）`torch.cuda.manual_seed_all`，固定 nano-vLLM Sampler 采样时的 CPU/CUDA RNG 起点。它必须在创建 `LLM` 之前设置，使三条新进程经历一致的 RNG 消耗顺序，覆盖 LLM 初始化、内部 warmup、CUDA Graph 捕获和显式 warmup。
+
+设置 sampling seed 只是把采样 RNG 的起点固定到同一状态，不等于保证所有 CUDA 运算位级确定。`bench.py` 不调用 `torch.use_deterministic_algorithms`；非确定性的 CUDA kernel、原子归约以及并发 kernel 的执行顺序仍可能让两次运行的中间张量不完全一致。阶段 1 只要求三条进程的 RNG 起点和消耗顺序一致，真实的 CUDA 位级可复现性仍需今晚 WSL2 验证。
+
 ## 固定变量
 
 | 项目 | 阶段 1 固定值 |
@@ -16,7 +25,8 @@
 | 模型 | `Qwen/Qwen3-0.6B`，本地目录另行传入 |
 | 模型版本 | 必须用 `--model-revision` 记录精确 Hugging Face commit/revision |
 | 请求数 | 256 |
-| 随机种子 | 0 |
+| Workload 随机种子 | 0，通过 `--seed` 传入；固定 synthetic 请求的输入长度、输出长度和 prompt token id |
+| Sampling 随机种子 | 0，通过 `--sampling-seed` 传入；固定 PyTorch/CUDA 采样 RNG 的起点 |
 | 输入长度 | `[100, 1024]` 均匀整数分布 |
 | 输出长度 | `[100, 1024]` 均匀整数分布 |
 | Token ID | `[0, 10000]` 均匀整数分布 |

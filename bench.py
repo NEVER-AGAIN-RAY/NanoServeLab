@@ -61,6 +61,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Exact model commit/revision; recorded in the raw artifact",
     )
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--sampling-seed",
+        type=int,
+        default=0,
+        help=(
+            "Seed for the PyTorch/CUDA sampling RNG; distinct from --seed, "
+            "which fixes only the synthetic workload."
+        ),
+    )
     parser.add_argument("--run-number", type=int, default=1)
     parser.add_argument("--num-seqs", type=int, default=256)
     parser.add_argument("--min-input-len", type=int, default=100)
@@ -128,6 +137,23 @@ def synchronize_cuda(torch_module: Any) -> None:
         torch_module.cuda.synchronize()
 
 
+def set_sampling_seed(torch_module: Any, seed: int) -> None:
+    """Seed the PyTorch RNG consumed by the nano-vLLM Sampler.
+
+    This is a *sampling* seed, distinct from the workload ``--seed``. It fixes the
+    starting state of the CPU and CUDA RNG used during model sampling so that
+    three fresh processes see the same RNG-consumption order across LLM
+    initialization, internal warmup, CUDA graph capture and the explicit warmup.
+
+    It deliberately does not call ``torch.use_deterministic_algorithms`` and is not
+    a claim that every CUDA operator becomes bit-level reproducible: non-deterministic
+    kernels, atomic reductions and concurrent kernels can still vary between runs.
+    """
+    torch_module.manual_seed(seed)
+    if torch_module.cuda.is_available():
+        torch_module.cuda.manual_seed_all(seed)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
@@ -135,6 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     import torch
 
     from nanovllm import LLM, SamplingParams
+
+    # Seed the sampling RNG before any LLM initialization so three fresh
+    # processes experience the same RNG-consumption order through LLM init,
+    # internal warmup, CUDA graph capture and the explicit warmup below.
+    set_sampling_seed(torch, args.sampling_seed)
 
     prompt_token_ids, output_lengths = build_workload(
         random_seed=args.seed,
@@ -212,7 +243,11 @@ def main(argv: list[str] | None = None) -> int:
                 "min": 0,
                 "max": args.max_token_id,
             },
-            "sampling": {"temperature": args.temperature, "ignore_eos": True},
+            "sampling": {
+                "temperature": args.temperature,
+                "ignore_eos": True,
+                "seed": args.sampling_seed,
+            },
         },
         "warmup": {
             "measured": False,

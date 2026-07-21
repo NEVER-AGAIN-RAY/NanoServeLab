@@ -71,8 +71,9 @@
 
 - [Draft PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 在独立分支 `codex/reproducible-baseline-contract` 完成阶段 1 第一切片；在 WSL2 验证前不得转 Ready 或合并。
 - 已保留官方 `bench.py` 的 synthetic workload 与推理路径，只增加显式实验参数、确定性 workload 构造、单次进程计量、环境元数据和每次运行一个原始 JSON。
-- `docs/experiments/baseline.md` 已固定模型、revision、workload、seed、warmup/测量边界、三次独立进程重复规则、原始结果格式与晚间入口。
-- Mac 已通过新增 benchmark 合约单测、Python 语法检查、CLI `--help` 和 diff whitespace 检查；没有运行模型、CUDA 或 benchmark。
+- 已补齐显式 Sampling seed（`--sampling-seed`，默认 0）：在创建 `LLM` 之前用 `torch.manual_seed` 与 `torch.cuda.manual_seed_all` 固定采样 RNG 起点，与只固定 synthetic workload 的 `--seed` 分开记录。未修改 `nanovllm/` 核心，未开启 `torch.use_deterministic_algorithms`；不声称所有 CUDA 算子位级确定。
+- `docs/experiments/baseline.md` 已固定模型、revision、workload、seed、sampling seed、warmup/测量边界、三次独立进程重复规则、原始结果格式与晚间入口。
+- Mac 已通过 benchmark 合约单测、新增 sampling seed 单测、Python 语法检查、CLI `--help` 和 diff whitespace 检查；没有运行模型、CUDA 或 benchmark。
 - 2026-07-21 已重新 fetch 并核对：本地 `main` 与 `origin/main` 均为 `dbaeea1`；当前相关开放工作为 Draft PR #7。
 
 ### 环境与阻塞
@@ -80,7 +81,7 @@
 - Mac 只用于开发、轻量检查、数据分析和文档；不得在仓库根目录运行 `uv sync`，也不安装 CUDA-only 依赖。
 - Windows WSL2 既有虚拟环境可以运行 CPU Scheduler 单元测试。
 - WSL2 中直接执行 `nvidia-smi` 曾返回 `command not found`。这不阻塞当前 CPU 测试，但在阶段 1 CUDA baseline 前必须单独核查 GPU 驱动暴露与 PATH。
-- benchmark 合约目前只在 Mac 验证了纯 Python 边界；创建 `LLM`、warmup、CUDA 同步、三次完整 workload 和原始 JSON 都必须留到今晚 WSL2 验证。
+- benchmark 合约目前只在 Mac 验证了纯 Python 边界；创建 `LLM`、warmup、CUDA 同步、三次完整 workload、原始 JSON 以及 sampling seed 在真实 CUDA 下的可复现性，都必须留到今晚 WSL2 验证。
 - 当前没有可以报告的 benchmark 结果，也没有性能提升结论。
 
 ## 全局决策：下一实现目标

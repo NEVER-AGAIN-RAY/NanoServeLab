@@ -1,8 +1,37 @@
 import contextlib
 import io
 import unittest
+from unittest import mock
 
 import bench
+
+
+class SamplingSeedTest(unittest.TestCase):
+    def test_set_sampling_seed_calls_cpu_and_cuda_rng(self):
+        fake_torch = mock.Mock()
+        fake_torch.cuda.is_available.return_value = True
+        bench.set_sampling_seed(fake_torch, 7)
+        fake_torch.manual_seed.assert_called_once_with(7)
+        fake_torch.cuda.manual_seed_all.assert_called_once_with(7)
+        fake_torch.cuda.is_available.assert_called_once_with()
+
+    def test_set_sampling_seed_skips_cuda_when_unavailable(self):
+        fake_torch = mock.Mock()
+        fake_torch.cuda.is_available.return_value = False
+        bench.set_sampling_seed(fake_torch, 3)
+        fake_torch.manual_seed.assert_called_once_with(3)
+        fake_torch.cuda.manual_seed_all.assert_not_called()
+
+    def test_cli_default_sampling_seed_is_zero(self):
+        args = bench.parse_args(["--model-revision", "rev"])
+        self.assertEqual(args.sampling_seed, 0)
+        self.assertEqual(args.seed, 0)
+
+    def test_cli_explicit_sampling_seed_overrides_default(self):
+        args = bench.parse_args(
+            ["--model-revision", "rev", "--sampling-seed", "123"]
+        )
+        self.assertEqual(args.sampling_seed, 123)
 
 
 class BenchmarkContractTest(unittest.TestCase):

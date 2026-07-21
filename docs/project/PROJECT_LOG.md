@@ -38,3 +38,5 @@
 - 新增 `docs/experiments/baseline.md`，固定 Qwen3-0.6B、256 请求、seed 0、warmup/计量边界、三次全新进程重复规则、原始结果格式和晚间 WSL2 入口。
 - Mac 静态验证通过：`bench.py` 与新增测试可编译，benchmark 合约 3 个单元测试通过，CLI help 可解析，`git diff --check` 通过；没有运行模型、CUDA 或 benchmark，真实行为验证留到今晚 WSL2。
 - 创建 [Draft PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7)；明确在 WSL2 readiness、warmup、三次全新进程运行与原始 JSON 均验证前不得转 Ready 或合并。
+- 在 `bench.py` 补齐显式 Sampling seed（`--sampling-seed`，默认 0）：新增 `set_sampling_seed()` 用 `torch.manual_seed` 与 `torch.cuda.manual_seed_all` 在创建 `LLM` 之前固定采样 RNG，并在 `workload.sampling.seed` 记录；`--seed` 仍只固定 synthetic workload。未修改 `nanovllm/` 核心，未开启 `torch.use_deterministic_algorithms`，不声称所有 CUDA 算子位级确定。
+- 新增 4 个 sampling seed 单测（fake/mock torch 验证 RNG 调用、CLI 默认为 0、显式覆盖默认）；Mac 验证 7 个单测全部通过，`py_compile`、`bench.py --help`、`git diff --check` 均通过；真实 CUDA 采样可复现性仍需今晚 WSL2 验证。
