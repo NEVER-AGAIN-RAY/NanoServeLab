@@ -54,6 +54,7 @@
 - 新增 `docs/experiments/metrics.md`，固定 Initial Scheduler Queue Time、引擎侧 TTFT、Mean TPOT、E2E 与未来 throughput window；选择可注入 `time.perf_counter_ns()`、write-once timestamp、单 Token TPOT 为 `null`、nearest-rank percentile 和原始记录优先的规则。
 - 明确当前 `LLM.generate()` 只在全部请求完成后同步返回，不能报告客户端流式 TTFT；当前引擎也没有 cancel/failed 状态。阶段 2 合约没有新增运行时代码、没有运行 benchmark，真实 CUDA 边界与 instrumentation overhead 仍需未来 WSL2 验证。
 - 唯一下一实现目标切换为最小 per-request timing record 与 fake-clock CPU 测试；指标合约分支基于未合并的 PR #7 head，以 stacked change 保持与 baseline PR 隔离。
+- 创建 [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 提交指标边界合约，base 暂为 `codex/reproducible-baseline-contract`；PR #7 合并后必须 rebase/retarget 到最新 `main`，本轮不转 Ready、不合并。
 
 ## 2026-07-22
 
