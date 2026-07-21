@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；第一切片为指标边界合约
-- 当前主线：阶段 1 已通过 PR #7 完整合并；Draft PR #8 正在承载 TTFT、TPOT、E2E 与 Queue Time 的指标边界合约
+- 当前阶段：阶段 2——指标与混合负载；指标边界合约已完成并在 Draft PR #8 审阅
+- 当前主线：阶段 1 已通过 PR #7 完整合并；阶段 2 合约进入 `main` 后，下一步实现最小只读 per-request timing record 与 CPU 测试
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 
 ## 60 秒恢复流程
@@ -24,6 +24,7 @@
 | `docs/project/PROJECT_LOG.md` | 已发生的重要事件、验证结果和决策 | 按日期追加，不承载“当前状态” |
 | `docs/experiments/baseline.md` | 阶段 1 固定 workload、seed、warmup、测量与重复实验合约 | 只在实验定义变化时更新 |
 | `docs/experiments/baseline-results-2026-07-21.md` | 第一组正式 CUDA baseline 的逐次数据、统计、哈希、有效性与限制 | 作为实验 `NSL-S1-BL-20260721-01` 的固定记录，不覆盖改写为新实验 |
+| `docs/experiments/metrics.md` | 阶段 2 的事件边界、指标公式、空值/聚合规则和验证门槛 | 指标语义或实际生命周期事件变化时同步审阅 |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
 | `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
@@ -81,11 +82,12 @@
 - WSL2 已确认 `/dev/dxg`、RTX 4060、PyTorch CUDA 和既有 `.venv` 可用；全部 9 个测试通过，`enforce_eager=False` 的 `LLM` 初始化、内部 warmup、CUDA Graph 捕获以及 Prefill→Decode 实际成功。
 - 2026-07-21 在 clean commit `fb94f6b46213174718c2c89d11c86180712f3b53` 上用三个全新进程完成固定 256 请求 CUDA baseline；三份 schema v1 JSON 的固定字段一致，逐次吞吐为 1019.165630、1013.041928、1011.091819 output Token/s。
 - 三份原始 JSON 已保留在 WSL，并备份到 Mac 的 Git 忽略目录；两端 SHA-256 逐一一致。完整方法、逐次数据、统计、workload 指纹、异常观察和结论限制记录在 `docs/experiments/baseline-results-2026-07-21.md`。
-
 ### 当前活动工作
 
-- [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 在独立分支 `codex/stage2-metric-contract` 承载阶段 2 指标边界合约；base 已调整为 `main`，仍保持 Draft，不包含调度、KV Cache 或模型执行行为变化，也没有运行新 benchmark。
-- 当前只需审阅并验证该合约；阶段 1 不再作为阶段 2 的开放前置项。
+- [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 在独立分支 `codex/stage2-metric-contract` 承载阶段 2 指标边界合约；base 已调整为 `main`，仍保持 Draft。
+- `docs/experiments/metrics.md` 已根据实际源码固定 Scheduler 准入、首次调度、首个真实 Completion Token、完成和同步返回边界；明确当前只能报告引擎侧 TTFT/TPOT/E2E，不能冒充客户端流式延迟。
+- 指标合约选择 `time.perf_counter_ns()` 作为未来可注入 monotonic clock，规定 timestamp write-once、单 Token TPOT 为 `null`、原始记录与派生指标分离，并给出 Chunked Prefill、Prefix Cache、抢占、EOS 和非成功 outcome 的 CPU 测试矩阵。当前没有新增指标代码，也没有运行新 benchmark。
+- 当前只需审阅、验证并合并该合约；阶段 1 不再作为阶段 2 的开放前置项，最小 timing record 代码尚未开工。
 
 ### 环境与阻塞
 
@@ -100,48 +102,50 @@
 
 ### 目标名称
 
-**Stage 2 metric boundary contract**
+**Minimal per-request timing record**
 
 ### 为什么现在做
 
-阶段 1 的环境、模型、固定 workload、三次独立进程、原始 JSON 与统计记录均已实际验证并合并。项目研究问题关注在线混合请求的 TTFT、TPOT、尾延迟与公平性，而当前 batch throughput baseline 没有 per-request 时间戳。下一切片先固定指标语义，避免后续实现虽然能产出数字，却无法解释数字从哪个生命周期事件开始和结束。
+阶段 1 的环境、模型、固定 workload、三次独立进程、原始 JSON 与统计记录均已实际验证并合并。`docs/experiments/metrics.md` 已把 Scheduler 准入、首次调度、真实首 Token、完成和同步 API 返回映射到当前源码，并固定四个核心延迟公式、空值语义、聚合方法和 WSL2 验证边界。下一切片只把这份合约变成最小只读记录和确定性 CPU 测试，不同时扩展 workload 或输出框架。
 
 ### 本轮要回答的问题
 
-- 请求进入系统、首次被调度、首个输出 Token 可见、后续 Token 产生和请求完成分别对应哪个事件；
-- TTFT、TPOT、E2E 与 Queue Time 的起止边界、单位、时钟来源、聚合方法和异常值处理如何定义；
-- Chunked Prefill、一次调度内多 Token Prefill、Decode 的一 Token 落后不变量以及请求完成离队如何影响指标；
-- 如何用只读记录保持现有 Scheduler、KV Cache 与模型执行行为不变，并让边界能够在 CPU 测试中验证。
+- timing record 应由哪个最小组件持有，如何在 KV Block 释放后继续保留原始事件；
+- 如何注入 fake `perf_counter_ns`，让 CPU 生命周期测试不使用 `sleep` 且完全确定；
+- 如何在不把 Chunked Prefill 临时采样误算为首 Token 的前提下，write-once 记录 Arrival、First Scheduled、First Output 与 Completion；
+- 如何证明记录层不改变 Scheduler 选择、Sequence 状态、Prefix Cache、抢占或 KV Block 生命周期。
 
 ### 明确范围
 
-本轮先做指标合约与最小可测试设计：
+本轮只实现最小记录层和 CPU 测试：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
-- 不提前构造完整 benchmark 框架、数据库、Dashboard 或在线服务；
-- 不把 batch throughput 换名为 TTFT/TPOT，也不从缺少 per-request 时间戳的数据反推延迟；
-- 优先在 Mac 上完成事件定义、接口不变量和 CPU 测试设计；真实 CUDA 开销与行为仍单独留给 WSL2 验证；
-- 若需要行为代码，先解释接口与不变量，并保持可审阅的最小 diff。
+- 不提前构造完整 benchmark 框架或在线服务；
+- 不实现客户端流式 API、混合到达 workload、JSONL、数据库、Dashboard 或可视化；
+- 不虚构当前不存在的 cancel/failed 引擎状态，非成功 outcome 只按实际可观察能力记录；
+- 使用可注入 monotonic clock 和独立原始记录，不用 UTC 或 `sleep` 计算 duration；
+- 只做 Mac 可用的 CPU 行为测试；真实 CUDA 事件边界和 instrumentation overhead 留给 WSL2。
 
 ### 实施顺序
 
-1. 基于已经理解和测试的请求生命周期，列出每个候选时间戳的唯一写入事件与所有者，不重复 Scheduler/Snapshot 全量分析。
-2. 新增一份阶段 2 指标合约，明确 TTFT、TPOT、E2E、Queue Time 的公式、单位、空值/单 Token 请求语义和汇总规则。
-3. 设计一个不影响调度决策的最小只读记录接口，并先用 CPU 测试覆盖 Chunked Prefill、首 Token、Decode 与完成边界。
-4. 合约和 CPU 行为稳定后，再在 WSL2 验证真实 CUDA 路径与 instrumentation overhead；之后才设计长短混合 workload。
+1. 先解释记录接口、所有权和 write-once 不变量，选择最小代码落点。
+2. 实现可注入 clock 的 per-request 原始 timing record，不把派生统计写回运行时状态。
+3. 用 CPU 测试覆盖普通生命周期、两轮 Chunked Prefill、重复调度、单/多 Token、EOS、Prefix Cache、抢占和完成后 KV 释放。
+4. Mac 全部测试通过后更新状态；只把真实 CUDA 路径与开销验证列入 WSL2 清单，不在本切片运行 benchmark。
 
 ### 完成标准
 
-- 四个指标都有无歧义、可由具体生命周期事件实现的数学定义；
-- Chunked Prefill、单 Token 输出、取消/失败和未完成请求的记录语义明确；
-- 最小记录接口不改变 Scheduler 选择、Sequence 状态或 KV Block 生命周期，并有 CPU 测试固定这些不变量；
-- WSL2 验证前不把 Mac 测试结果描述成 CUDA 行为或开销结论。
+- Arrival、First Scheduled、First Output 和 Completion 均按合约 write-once，缺失事件保持 `null`；
+- Chunked Prefill 临时采样不触发首 Token，单 Token TPOT 可重算为 `null`；
+- 完成记录在 KV Block 释放后仍可读取，现有 Scheduler 生命周期与 Snapshot 测试继续通过；
+- 新增 CPU 测试使用 fake clock，证明事件顺序和公式，不依赖 CUDA 或 wall-clock sleep；
+- 不把 Mac 测试描述为真实 CUDA 时间准确性或低开销结论。
 
 ## 立即下一步
 
-1. 审阅 Draft PR #8 中 TTFT、TPOT、E2E 与 Queue Time 的定义、生命周期边界和聚合规则。
-2. 完成文档一致性与静态验证后合并指标合约，不运行新 benchmark。
-3. 合约进入 `main` 后再决定最小只读记录接口；需要代码时配套 CPU 测试，并把 CUDA 行为与开销验证列入下一次 WSL2 清单。
+1. 由项目所有者审阅 `docs/experiments/metrics.md` 的事件命名、公式和结论边界。
+2. 审阅通过并完成文档一致性与静态验证后合并 Draft PR #8，不运行新 benchmark。
+3. 合约进入 `main` 后，在新的独立实现分支完成最小 timing record 与 fake-clock CPU 测试，再制定 WSL2 行为与 instrumentation overhead 验证清单。
 
 ## 已推迟、当前不决策
 
@@ -151,4 +155,4 @@
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在指标边界合约稳定后再分别决策，当前不提前实现。
+这些问题在最小 timing record 和真实 WSL2 边界验证完成后再分别决策，当前不提前实现。
