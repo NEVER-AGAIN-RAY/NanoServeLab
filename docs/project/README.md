@@ -2,9 +2,9 @@
 
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
-- 最后核对日期：2026-07-20（Asia/Shanghai）
-- 当前阶段：阶段 0 后半段——Scheduler baseline 理解与可观测性基础
-- 当前主线：实现结构化 Scheduler Step Snapshot，再讨论调度策略变化
+- 最后核对日期：2026-07-21（Asia/Shanghai）
+- 当前阶段：阶段 1 入口——WSL2 GPU readiness 与 baseline 准备
+- 当前主线：先确认 GPU、驱动和 PyTorch CUDA 可见性，再运行 nano-vLLM baseline
 - 性能结论：无；尚未运行正式 CUDA benchmark
 
 ## 60 秒恢复流程
@@ -37,7 +37,7 @@
 
 ### 仓库基线
 
-- `main` 已包含项目导航、Scheduler 生命周期测试和中文核心模块导读；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
+- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试和结构化 Step Snapshot；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
 - 上游基线：`GeeeekExplorer/nano-vllm` 的 `bb823b3`
 - `origin` 是 `NEVER-AGAIN-RAY/NanoServeLab`；`upstream` 只用于跟踪官方仓库，禁止推送。
 - 根目录 `README.md` 保留上游 nano-vLLM 说明；NanoServeLab 自有文档统一放在 `docs/project/`。
@@ -55,6 +55,8 @@
   - 达到 `max_tokens` 后释放 KV Block。
 - 上述测试已在 Windows WSL2 的既有 Python 3.12.3 `.venv` 中通过：`Ran 1 test / OK`。
 - 项目所有者已完成逐段复盘，能够解释最小请求生命周期以及 `num_tokens = num_cached_tokens + 1` 的原因。
+- 已完成只读、不可变的 Scheduler Step Snapshot，并在 WSL2 验证原生命周期测试与新 Snapshot 测试共 2 个全部通过。
+- 项目所有者已完成 Snapshot 复盘，能够区分实时 Scheduler 状态、历史快照以及 `scheduled_seqs` 在请求离队后的观察作用。
 
 ### 已合并里程碑
 
@@ -63,13 +65,13 @@
 | 项目导航与文档治理 | 已合并 | [PR #3](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/3)，merge `9230325` | 统一当前入口、稳定章程和历史日志 |
 | Scheduler 生命周期测试 | 已合并 | [PR #2](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/2)，merge `b4da09f` | WSL2 已验证，已成为 `main` baseline |
 | 中文核心模块导读 | 已合并 | [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1)，merge `be4506a` | 仅模块级 docstring，无行为变化 |
+| Scheduler Step Snapshot | 已合并 | [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5)，merge `2588827` | 只读观察层；WSL2 全部 2 个测试通过 |
 
 ### 当前活动工作
 
-- “结构化 Scheduler Step Snapshot（第一纵向切片）”已在分支 `codex/scheduler-step-snapshot` 完成首个实现提交 `f4e9457`。
-- 改动只新增只读快照模块与独立 CPU 测试，没有修改 Scheduler、BlockManager、LLMEngine、Config 或原生命周期测试。
-- WSL2 既有 Python 3.12.3 `.venv` 已运行全部单元测试：2 个测试均通过，结果为 `OK`。
-- 下一步是创建独立 Draft PR，并根据快照逐段复盘观察边界；合并前不开始第二切片。
+- [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5) 已合并，Snapshot 第一纵向切片完成。
+- 2026-07-21 核对时没有开放 PR，本地与远端 `main` 已同步。
+- 下一目标切换为 WSL2 GPU readiness audit；目前只做诊断，不修改驱动、CUDA、依赖或系统配置。
 
 ### 环境与阻塞
 
@@ -82,93 +84,58 @@
 
 ### 目标名称
 
-**结构化 Scheduler Step Snapshot（第一纵向切片）**
+**WSL2 GPU readiness audit**
 
 ### 为什么现在做
 
-生命周期测试已经证明我们能用断言观察最终状态，但下一阶段需要把每一轮调度中的队列、Token 进度与 KV Block 占用变成明确、可复用的数据。先建立只读观察层，可以：
+阶段 0 已经建立请求生命周期 baseline、中文导读和结构化观察基础。进入正式 nano-vLLM baseline 前，当前最直接的未知项是 WSL2 中 `nvidia-smi` 曾返回 `command not found`。在 GPU 可见性未确认前继续扩展 observer、指标或 benchmark 都会增加无效工作。
 
-- 把刚掌握的生命周期知识变成可检查的状态快照；
-- 为后续 TTFT、TPOT、Queue Time 和调度策略比较建立统一词汇；
-- 在修改调度策略前形成回归证据；
-- 避免现在就把日志、性能计时或研究策略混进核心 Scheduler。
+### 本轮要回答的问题
 
-### 第一切片的成果
-
-新增一个纯读取、不可变的 Scheduler 快照模型，并在 CPU 单元测试中于 `schedule()` 与 `postprocess()` 之后显式采集。建议落点为：
-
-- `nanovllm/engine/scheduler_trace.py`：快照数据结构与纯采集函数；
-- `tests/test_scheduler_trace.py`：复用最小生命周期，验证每一阶段的快照内容。
-
-计划中的快照字段：
-
-- Step 级：步骤编号、阶段、Prefill/Decode 模式、已调度请求 ID；
-- Queue 级：`waiting` 与 `running` 请求 ID；
-- Sequence 级：状态、Prompt/Completion/总 Token 数、已缓存与本轮已调度 Token 数、Block 数；
-- KV Block 级：已用 Block ID 的不可变副本、空闲 Block 数。
-
-快照必须复制可变集合为 tuple 等不可变值，避免后续 Scheduler 状态变化反向修改历史快照。状态名称使用稳定、可读的字符串，不直接暴露可变 Enum 或队列对象。
+- Windows/WSL2 是否把 RTX 4060 正确暴露给 Linux；
+- `/dev/dxg` 是否存在，WSL 内核与发行版信息是否正常；
+- `nvidia-smi` 是单纯不在 PATH，还是驱动接口确实不可用；
+- 既有 `.venv` 中 PyTorch 的版本、CUDA build、`torch.cuda.is_available()` 和设备名称；
+- 当前环境是否已经具备运行 nano-vLLM baseline 的条件，若不具备，阻塞位于哪一层。
 
 ### 明确范围
 
-本切片包含：
+本轮只做只读诊断和事实记录：
 
-- 新增独立的只读快照模块；
-- 在测试中手动采集并断言三步生命周期；
-- 记录 `WAITING`、Chunked Prefill、`RUNNING`、Decode、`FINISHED` 和 KV Block 释放；
-- 在 WSL2 既有环境运行完整单元测试。
+- 不安装或升级 Windows 驱动、CUDA Toolkit、PyTorch 或项目依赖；
+- 不修改 PATH、WSL 配置、系统服务或仓库代码；
+- 不运行 nano-vLLM benchmark，不生成性能结论；
+- 不把机器地址、令牌或大段原始系统输出提交进仓库。
 
-本切片不包含：
-
-- 不修改 `Scheduler.schedule()`、`postprocess()`、`BlockManager` 或调度决策；
-- 不给 `Config` 增加开关，不接入 `LLMEngine.step()` 回调；
-- 不打印日志、不落 JSON 文件、不引入日志框架；
-- 不实现 TTFT、TPOT 或 benchmark 指标；
-- 不修改 FCFS、抢占、Prefix Cache 或任何调度评分；
-- 不在 macOS 安装或运行 CUDA 依赖。
+如诊断确认需要安装或修改系统配置，必须先记录根因与最小修复方案，再单独获得用户授权。
 
 ### 实施顺序
 
-1. 从已包含生命周期 baseline 的 `main` 创建 `codex/scheduler-step-snapshot`。
-2. 定义不可变的 Step、Sequence 快照数据结构和无副作用采集函数。
-3. 用三步生命周期测试验证以下状态序列：
-   - 首轮 Prefill 后仍为 `WAITING`，缓存进度为 4；
-   - 次轮 Prefill 后进入 `RUNNING`，生成第一个 Completion Token；
-   - Decode 后达到 `max_tokens`，进入 `FINISHED`，KV Block 全部释放。
-4. 保留原生命周期测试作为行为基线，确认它未被改写成只测试快照实现。
-5. 在 WSL2 既有 `.venv` 中运行全部单元测试，保存真实输出后创建独立 Draft PR。
-6. 由项目所有者根据快照逐步复述状态变化；理解通过后，再决定是否做第二切片的可选 `LLMEngine.step()` observer。
+1. 通过既有 Tailscale SSH 只读采集 WSL 发行版、内核、GPU 设备节点和 NVIDIA 工具路径。
+2. 使用既有 `.venv` 读取 Python、PyTorch、CUDA build 与设备可见性，不安装依赖。
+3. 将证据归类为：GPU 暴露正常、仅 PATH 问题、驱动/WSL 暴露问题、或 Python/PyTorch 环境问题。
+4. 在 `environment/wsl2.md` 记录精简且可复现的环境事实，不保存敏感连接信息。
+5. 更新本入口与项目日志，给出是否可以进入 baseline 的明确结论。
 
 ### 完成标准
 
-- 不调用快照函数时，运行时行为、输出和开销路径完全不变。
-- 每个快照都是历史值，不会随 Scheduler 后续运行而变化。
-- 测试能清楚区分 `num_tokens`、`num_cached_tokens` 与 `num_scheduled_tokens`。
-- 完成后的快照能证明请求结束时队列为空且 KV Block 已释放。
-- 原生命周期测试与新快照测试都在 WSL2 通过。
-- PR 只包含本切片，不夹带策略、性能指标或无关重构。
-
-### 风险与控制
-
-| 风险 | 控制方式 |
-| --- | --- |
-| 快照保存可变列表，历史记录被后续步骤污染 | 采集时复制为不可变 tuple，并增加回归断言 |
-| 已完成请求从队列移除后无法观察 | 采集函数显式接收本轮 `scheduled_seqs`，同时记录队列和本轮对象 |
-| 过早把 trace 变成生产日志系统 | 第一切片只返回结构化数据，不输出、不持久化 |
-| 为了测试 trace 而改写 Scheduler 行为 | 原生命周期测试保持独立，核心调度文件不在本切片修改范围内 |
-| Block ID 断言过度耦合实现细节 | 主要断言占用数量、释放结果和不可变性；仅在确有语义需要时检查具体 ID |
+- 能明确回答 RTX 4060 是否对 WSL2 和 PyTorch 可见；
+- 能解释 `nvidia-smi` 失败发生在哪一层；
+- 所有结论都有真实命令证据，不把推测写成事实；
+- 若环境未就绪，给出一个最小、分层的修复建议，但不擅自执行；
+- 不产生 benchmark 或性能提升结论。
 
 ## 立即下一步
 
-1. 为 `codex/scheduler-step-snapshot` 创建独立 Draft PR，记录两个 WSL2 单元测试的真实通过结果。
-2. 逐段复盘 `after_schedule` 与 `after_postprocess` 快照，确认字段与生命周期语义一致。
-3. 完成理解检查后收口第一切片，再决定是否设计可选的 `LLMEngine.step()` observer。
+1. 使用 `diagnose` 流程对在线 WSL2 节点执行只读 GPU readiness audit。
+2. 记录 `environment/wsl2.md`，区分已验证事实、阻塞和待用户授权的修复。
+3. 根据诊断结果决定进入 baseline，或先做一个独立环境修复任务。
 
 ## 已推迟、当前不决策
 
-- 快照是否接入 `LLMEngine.step()` 的可选 observer；
+- Snapshot 是否接入 `LLMEngine.step()` 的可选 observer；
 - 是否导出 JSONL 作为实验原始 trace；
 - TTFT、TPOT、Queue Time 的计时边界与时钟选择；
 - 第一种自定义调度评分公式。
 
-这些问题在第一切片完成并经过理解复盘后再分别决策，当前不应提前实现。
+这些问题等待 GPU baseline 环境就绪后再分别决策，当前不提前实现。
