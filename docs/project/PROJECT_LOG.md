@@ -27,3 +27,9 @@
 - 三个阶段 0 基础 PR 全部收口，开始准备结构化 Scheduler Step Snapshot 第一纵向切片。
 - 在分支 `codex/scheduler-step-snapshot` 完成第一切片实现提交 `f4e9457`：新增只读、不可变的 Scheduler/Sequence 快照和独立生命周期快照测试，未修改核心调度路径。
 - 通过 Tailscale SSH 在 WSL2 既有 Python 3.12.3 `.venv` 中运行全部单元测试；原生命周期测试与新 Snapshot 测试共 2 个，全部通过，结果为 `OK`。
+
+## 2026-07-21
+
+- 项目所有者完成 Scheduler Step Snapshot 逐段复盘，能够解释实时状态、不可变历史快照和 `scheduled_seqs` 对刚完成请求的观察作用。
+- [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5) 合并为 `2588827`，结构化 Scheduler Step Snapshot 第一纵向切片进入 `main`。
+- 决定阶段 0 的观察基础已经满足，暂不扩展 `LLMEngine.step()` observer；下一目标切换为只读 WSL2 GPU readiness audit，为 nano-vLLM baseline 确认环境前置条件。
