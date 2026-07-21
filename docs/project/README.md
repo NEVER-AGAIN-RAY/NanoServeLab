@@ -69,11 +69,11 @@
 
 ### 当前活动工作
 
-- 独立分支 `codex/reproducible-baseline-contract` 正在完成阶段 1 第一切片。
+- [Draft PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 在独立分支 `codex/reproducible-baseline-contract` 完成阶段 1 第一切片；在 WSL2 验证前不得转 Ready 或合并。
 - 已保留官方 `bench.py` 的 synthetic workload 与推理路径，只增加显式实验参数、确定性 workload 构造、单次进程计量、环境元数据和每次运行一个原始 JSON。
 - `docs/experiments/baseline.md` 已固定模型、revision、workload、seed、warmup/测量边界、三次独立进程重复规则、原始结果格式与晚间入口。
 - Mac 已通过新增 benchmark 合约单测、Python 语法检查、CLI `--help` 和 diff whitespace 检查；没有运行模型、CUDA 或 benchmark。
-- 2026-07-21 开始任务时 `HEAD`、本地 `main` 与 `origin/main` 均为 `dbaeea1`；`gh` 本地凭据失效，因此开放 PR 列表需要在恢复认证后再次核对。
+- 2026-07-21 已重新 fetch 并核对：本地 `main` 与 `origin/main` 均为 `dbaeea1`；当前相关开放工作为 Draft PR #7。
 
 ### 环境与阻塞
 
