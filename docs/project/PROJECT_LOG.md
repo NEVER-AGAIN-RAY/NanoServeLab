@@ -33,3 +33,20 @@
 - 项目所有者完成 Scheduler Step Snapshot 逐段复盘，能够解释实时状态、不可变历史快照和 `scheduled_seqs` 对刚完成请求的观察作用。
 - [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5) 合并为 `2588827`，结构化 Scheduler Step Snapshot 第一纵向切片进入 `main`。
 - 决定阶段 0 的观察基础已经满足，暂不扩展 `LLMEngine.step()` observer；下一目标切换为只读 WSL2 GPU readiness audit，为 nano-vLLM baseline 确认环境前置条件。
+- 按白天 Mac、晚间 WSL2 的固定节奏，将阶段 1 第一切片选为“可复现 baseline 实验合约”，避免把 GPU readiness 当作白天开发阻塞。
+- 保留上游 `bench.py` 的模型调用与 synthetic workload 语义，增加显式模型 revision、固定 seed/长度边界、单次进程测量、CUDA 边界同步、环境元数据和每次运行一个 schema v1 原始 JSON；未修改 Scheduler、KV Cache 或模型执行组件。
+- 新增 `docs/experiments/baseline.md`，固定 Qwen3-0.6B、256 请求、seed 0、warmup/计量边界、三次全新进程重复规则、原始结果格式和晚间 WSL2 入口。
+- Mac 静态验证通过：`bench.py` 与新增测试可编译，benchmark 合约 3 个单元测试通过，CLI help 可解析，`git diff --check` 通过；没有运行模型、CUDA 或 benchmark，真实行为验证留到今晚 WSL2。
+- 创建 [Draft PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7)；明确在 WSL2 readiness、warmup、三次全新进程运行与原始 JSON 均验证前不得转 Ready 或合并。
+- 在 `bench.py` 补齐显式 Sampling seed（`--sampling-seed`，默认 0）：新增 `set_sampling_seed()` 用 `torch.manual_seed` 与 `torch.cuda.manual_seed_all` 在创建 `LLM` 之前固定采样 RNG，并在 `workload.sampling.seed` 记录；`--seed` 仍只固定 synthetic workload。未修改 `nanovllm/` 核心，未开启 `torch.use_deterministic_algorithms`，不声称所有 CUDA 算子位级确定。
+- 新增 4 个 sampling seed 单测（fake/mock torch 验证 RNG 调用、CLI 默认为 0、显式覆盖默认）；Mac 验证 7 个单测全部通过，`py_compile`、`bench.py --help`、`git diff --check` 均通过；真实 CUDA 采样可复现性仍需今晚 WSL2 验证。
+- 完成 WSL2 GPU readiness audit：Ubuntu 24.04.4 的 `/dev/dxg` 存在，RTX 4060 Laptop GPU、驱动 555.97、PyTorch 2.4.0+cu124 和 CUDA 12.4 实际可用；此前 `nvidia-smi: command not found` 确认为 `/usr/lib/wsl/lib` 未进入 PATH，而非驱动故障。
+- WSL 仓库同步到 Draft PR #7 的 `8f63bcd` 后，全部 9 个单元测试通过；Qwen3-0.6B 的 9 个下载 metadata 一致指向 revision `c1899de289a04d12100db370d81485cdf75e47ca`。
+- 实际创建 `LLM(enforce_eager=False, max_model_len=4096)`，完成内部 warmup 与 CUDA Graph 捕获初始化；1 Token Prefill 冒烟和覆盖一轮 Decode 图回放的 2 Token 冒烟均成功，退出码为 0。未运行正式 baseline，下一目标收敛为三个全新进程的固定 workload 与原始 JSON 验证。
+- WSL 直连 GitHub HTTPS 在本次核对时超时；未修改网络或代理，改用 Mac 生成并验证的最小 Git bundle 将 readiness 文档安全 fast-forward 到 WSL。该问题不阻塞当前 baseline，但后续直接 fetch 前需要重新核查网络路径。
+- 在 clean commit `fb94f6b46213174718c2c89d11c86180712f3b53` 上完成正式 baseline 预检：GPU 无 compute process，结果目录为空，10 个模型 metadata 一致指向 revision `c1899de289a04d12100db370d81485cdf75e47ca`，固定 workload 为 256 请求、142,827 输入 Token 和 133,966 请求输出 Token。
+- 按相同参数串行启动三个全新 Python/`LLM` 进程，三次均正常退出并生成 schema v1 JSON；逐次结果为 1019.165630、1013.041928、1011.091819 output Token/s，对应 elapsed 131.446740、132.241318、132.496374 秒，没有失败或结果剔除。
+- 三次输出吞吐的平均值为 1014.433126 Token/s，样本标准差为 4.212859 Token/s，变异系数为 0.415292%。该值只作为当前固定条件的参考 baseline，没有对照组，不构成性能提升结论。
+- 三份原始 JSON 已从 WSL 备份到 Mac 的 Git 忽略目录，逐文件 SHA-256 完全一致；另记录模型权重 SHA-256 和固定 workload 规范化指纹。完整证据链、命令、逐次数据、统计方法、限制与后续使用规则写入 `docs/experiments/baseline-results-2026-07-21.md`。
+- 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都成功完成；本轮没有修改 cache limit。stdout/stderr 未单独归档、运行期间未连续采集热状态等限制已如实记录。
+- 阶段 1 的正式退出条件已经满足；唯一下一实现目标切换为阶段 2 指标边界合约，先定义 TTFT、TPOT、E2E 与 Queue Time 的生命周期事件、公式和 CPU 可测不变量，不提前改变调度策略或运行新 benchmark。
