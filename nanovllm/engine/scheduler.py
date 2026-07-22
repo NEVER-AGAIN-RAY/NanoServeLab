@@ -19,18 +19,26 @@
 
 重要约束：当前每个批次只能是纯 Prefill 或纯 Decode；只要成功调度
 Prefill 就会立即返回，因此该文件的队列策略会直接影响 TTFT、TPOT 和公平性。
+
+可选 ``timing_recorder`` 只观察生命周期事件，不参与排序、准入、抢占或
+KV 决策；默认 ``None`` 时行为与上游一致。
 """
 
-from collections import deque
+from __future__ import annotations
 
-from nanovllm.config import Config
+from collections import deque
+from typing import TYPE_CHECKING
+
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.engine.block_manager import BlockManager
+
+if TYPE_CHECKING:
+    from nanovllm.config import Config
 
 
 class Scheduler:
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, *, timing_recorder=None):
         self.max_num_seqs = config.max_num_seqs
         self.max_num_batched_tokens = config.max_num_batched_tokens
         self.eos = config.eos
@@ -38,11 +46,14 @@ class Scheduler:
         self.block_manager = BlockManager(config.num_kvcache_blocks, config.kvcache_block_size)
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
+        self.timing_recorder = timing_recorder
 
     def is_finished(self):
         return not self.waiting and not self.running
 
     def add(self, seq: Sequence):
+        if self.timing_recorder is not None:
+            self.timing_recorder.record_arrival(seq.seq_id, seq.num_prompt_tokens)
         self.waiting.append(seq)
 
     def schedule(self) -> tuple[list[Sequence], bool]:
@@ -75,6 +86,7 @@ class Scheduler:
             scheduled_seqs.append(seq)
 
         if scheduled_seqs:
+            self._record_first_scheduled(scheduled_seqs)
             return scheduled_seqs, True
 
         # decode
@@ -93,6 +105,7 @@ class Scheduler:
                 scheduled_seqs.append(seq)
         assert scheduled_seqs
         self.running.extendleft(reversed(scheduled_seqs))
+        self._record_first_scheduled(scheduled_seqs)
         return scheduled_seqs, False
 
     def preempt(self, seq: Sequence):
@@ -109,7 +122,23 @@ class Scheduler:
             if is_prefill and seq.num_cached_tokens < seq.num_tokens:
                 continue
             seq.append_token(token_id)
+            if self.timing_recorder is not None:
+                self.timing_recorder.record_output_token(
+                    seq.seq_id,
+                    seq.num_completion_tokens,
+                )
             if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens:
                 seq.status = SequenceStatus.FINISHED
+                if self.timing_recorder is not None:
+                    self.timing_recorder.record_completed(
+                        seq.seq_id,
+                        seq.num_completion_tokens,
+                    )
                 self.block_manager.deallocate(seq)
                 self.running.remove(seq)
+
+    def _record_first_scheduled(self, scheduled_seqs: list[Sequence]) -> None:
+        if self.timing_recorder is None:
+            return
+        for seq in scheduled_seqs:
+            self.timing_recorder.record_first_scheduled(seq.seq_id)

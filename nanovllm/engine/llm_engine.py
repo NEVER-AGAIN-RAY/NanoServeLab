@@ -28,11 +28,18 @@ from nanovllm.sampling_params import SamplingParams
 from nanovllm.engine.sequence import Sequence
 from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.model_runner import ModelRunner
+from nanovllm.engine.request_timing import RequestTimingRecorder
 
 
 class LLMEngine:
 
-    def __init__(self, model, **kwargs):
+    def __init__(
+        self,
+        model,
+        *,
+        timing_recorder: RequestTimingRecorder | None = None,
+        **kwargs,
+    ):
         config_fields = {field.name for field in fields(Config)}
         config_kwargs = {k: v for k, v in kwargs.items() if k in config_fields}
         config = Config(model, **config_kwargs)
@@ -49,7 +56,7 @@ class LLMEngine:
         self.model_runner = ModelRunner(config, 0, self.events)
         self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)
         config.eos = self.tokenizer.eos_token_id
-        self.scheduler = Scheduler(config)
+        self.scheduler = Scheduler(config, timing_recorder=timing_recorder)
         atexit.register(self.exit)
 
     def exit(self):
