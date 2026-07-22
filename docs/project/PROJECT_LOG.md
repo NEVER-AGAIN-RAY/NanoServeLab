@@ -79,3 +79,5 @@
 - 10 份 schema v1 原始 JSON 与验收 runner 已保留在 WSL，并备份到 Mac 的 Git 忽略目录；双端逐文件 SHA-256 一致。完整协议、原始值、哈希、解释边界和限制记录在 `docs/experiments/timing-validation-2026-07-22.md`。
 - PR #11 的 WSL2/CUDA 行为门槛已满足，但阶段 2 仍未完成；下一实现目标切换为纯 per-request 指标派生，用确定性 CPU 测试固定 Queue Time、TTFT、E2E、TPOT 和无效/空值规则，不同时实现混合 workload 或聚合框架。
 - [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11) 在最终实时核对 HEAD `1cc8cca`、无评论/审阅阻塞且 GitHub 判定 `CLEAN / MERGEABLE` 后转为 Ready，并以 merge commit `5f72b60b167c3204375b0549f67a9bdb147d7325` 合并到 `main`。阶段 2 的最小原始 timing 记录层至此完成；下一目标保持为纯 per-request 指标派生。
+- 在独立分支 `cursor/stage2-request-metrics`（基于 `origin/main` `634222c`）实现纯 per-request 指标派生：新增 `nanovllm/engine/request_metrics.py` 的 `RequestMetrics` 与 `derive_request_metrics()`；按合约计算 Queue Time / TTFT / E2E / Mean TPOT；`N==1` 时 TPOT 为 `None`；`outcome` 非 finished、`output_tokens<=0`、缺失时间戳或乱序抛 `ValueError`。未修改 Scheduler、LLMEngine、recorder 或事件写入位置。
+- 新增 `tests/test_request_metrics.py`。Mac 轻量 package bootstrap 下与 timing/lifecycle/snapshot/bench 共 33 个测试全部通过；`py_compile` 与 `git diff --check` 通过。未运行 CUDA 或 benchmark，无性能结论；阶段 2 未完成。下一目标：审阅合并本切片后，再冻结 saturated 混合 workload。
