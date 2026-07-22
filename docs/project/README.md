@@ -2,9 +2,9 @@
 
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
-- 最后核对日期：2026-07-21（Asia/Shanghai）
+- 最后核对日期：2026-07-22（Asia/Shanghai）
 - 当前阶段：阶段 2——指标与混合负载；第一切片为指标边界合约
-- 当前主线：阶段 1 的三次独立 CUDA baseline 已完成、校验并备份；下一步定义 TTFT、TPOT、E2E 与 Queue Time 的事件边界
+- 当前主线：阶段 1 已通过 PR #7 完整合并；Draft PR #8 正在承载 TTFT、TPOT、E2E 与 Queue Time 的指标边界合约
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 
 ## 60 秒恢复流程
@@ -69,10 +69,11 @@
 | Scheduler 生命周期测试 | 已合并 | [PR #2](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/2)，merge `b4da09f` | WSL2 已验证，已成为 `main` baseline |
 | 中文核心模块导读 | 已合并 | [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1)，merge `be4506a` | 仅模块级 docstring，无行为变化 |
 | Scheduler Step Snapshot | 已合并 | [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5)，merge `2588827` | 只读观察层；WSL2 全部 2 个测试通过 |
+| 阶段 1 可复现 nano-vLLM baseline | 已合并 | [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7)，merge `22be4f9` | WSL2 三次独立进程完成；原始 JSON、统计与限制均已归档 |
 
-### 当前活动工作
+### 阶段 1 最终交付
 
-- [Draft PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 在独立分支 `codex/reproducible-baseline-contract` 完成阶段 1 baseline 合约与真实 CUDA 验证；目前仍保持 Draft、尚未合并，但已不再受“缺少 WSL2 行为验证”阻塞。
+- [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 已于 2026-07-22 合并到 `main`，merge commit 为 `22be4f9`；阶段 1 没有剩余代码、实验或文档交付项。
 - 已保留官方 `bench.py` 的 synthetic workload 与推理路径，只增加显式实验参数、确定性 workload 构造、单次进程计量、环境元数据和每次运行一个原始 JSON。
 - 已补齐显式 Sampling seed（`--sampling-seed`，默认 0）：在创建 `LLM` 之前用 `torch.manual_seed` 与 `torch.cuda.manual_seed_all` 固定采样 RNG 起点，与只固定 synthetic workload 的 `--seed` 分开记录。未修改 `nanovllm/` 核心，未开启 `torch.use_deterministic_algorithms`；不声称所有 CUDA 算子位级确定。
 - `docs/experiments/baseline.md` 已固定模型、revision、workload、seed、sampling seed、warmup/测量边界、三次独立进程重复规则、原始结果格式与 WSL2 入口。
@@ -80,14 +81,18 @@
 - WSL2 已确认 `/dev/dxg`、RTX 4060、PyTorch CUDA 和既有 `.venv` 可用；全部 9 个测试通过，`enforce_eager=False` 的 `LLM` 初始化、内部 warmup、CUDA Graph 捕获以及 Prefill→Decode 实际成功。
 - 2026-07-21 在 clean commit `fb94f6b46213174718c2c89d11c86180712f3b53` 上用三个全新进程完成固定 256 请求 CUDA baseline；三份 schema v1 JSON 的固定字段一致，逐次吞吐为 1019.165630、1013.041928、1011.091819 output Token/s。
 - 三份原始 JSON 已保留在 WSL，并备份到 Mac 的 Git 忽略目录；两端 SHA-256 逐一一致。完整方法、逐次数据、统计、workload 指纹、异常观察和结论限制记录在 `docs/experiments/baseline-results-2026-07-21.md`。
-- 2026-07-21 已重新 fetch 并核对：本地 `main` 与 `origin/main` 均为 `dbaeea1`；当前相关开放工作为 Draft PR #7。
+
+### 当前活动工作
+
+- [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 在独立分支 `codex/stage2-metric-contract` 承载阶段 2 指标边界合约；base 已调整为 `main`，仍保持 Draft，不包含调度、KV Cache 或模型执行行为变化，也没有运行新 benchmark。
+- 当前只需审阅并验证该合约；阶段 1 不再作为阶段 2 的开放前置项。
 
 ### 环境与阻塞
 
 - Mac 只用于开发、轻量检查、数据分析和文档；不得在仓库根目录运行 `uv sync`，也不安装 CUDA-only 依赖。
 - Windows WSL2 readiness 已通过，精简环境事实记录于 `environment/wsl2.md`。
 - 此前 `nvidia-smi: command not found` 已确认为 PATH 问题：工具实际位于 `/usr/lib/wsl/lib/nvidia-smi`，GPU、驱动与 PyTorch CUDA 均正常，不需要修改系统配置。
-- 阶段 1 的正式 baseline 没有运行阻塞；WSL 直连 GitHub HTTPS 暂时超时，但正式实验所需 commit 已通过 Mac 的验证 bundle 同步。
+- 阶段 1 已完整交付，没有遗留运行阻塞；WSL 直连 GitHub HTTPS 曾暂时超时，但正式实验所需 commit 已通过 Mac 的验证 bundle 同步。
 - 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都正常完成；本轮没有为了改善数字而改变 cache limit。运行期间未连续记录温度、功耗或时钟，stdout/stderr 也未单独归档，这些限制已写入正式实验记录。
 - 当前有可复现的参考 baseline，但没有对照实验或性能提升结论。阶段 2 的 Mac 侧指标边界设计不受 WSL GitHub 网络问题阻塞。
 
@@ -99,7 +104,7 @@
 
 ### 为什么现在做
 
-阶段 1 的环境、模型、固定 workload、三次独立进程、原始 JSON 与统计记录均已实际验证。项目研究问题关注在线混合请求的 TTFT、TPOT、尾延迟与公平性，而当前 batch throughput baseline 没有 per-request 时间戳。下一切片先固定指标语义，避免后续实现虽然能产出数字，却无法解释数字从哪个生命周期事件开始和结束。
+阶段 1 的环境、模型、固定 workload、三次独立进程、原始 JSON 与统计记录均已实际验证并合并。项目研究问题关注在线混合请求的 TTFT、TPOT、尾延迟与公平性，而当前 batch throughput baseline 没有 per-request 时间戳。下一切片先固定指标语义，避免后续实现虽然能产出数字，却无法解释数字从哪个生命周期事件开始和结束。
 
 ### 本轮要回答的问题
 
@@ -134,9 +139,9 @@
 
 ## 立即下一步
 
-1. 在 Mac 上起草阶段 2 指标边界合约；先定语义和测试矩阵，不运行新 benchmark。
-2. 明确每个生命周期时间戳的唯一写入点、单位、空值语义和聚合公式。
-3. 合约确认后再决定最小代码落点；需要代码时配套 CPU 测试，并把 CUDA 行为与开销验证列入下一次 WSL2 清单。
+1. 审阅 Draft PR #8 中 TTFT、TPOT、E2E 与 Queue Time 的定义、生命周期边界和聚合规则。
+2. 完成文档一致性与静态验证后合并指标合约，不运行新 benchmark。
+3. 合约进入 `main` 后再决定最小只读记录接口；需要代码时配套 CPU 测试，并把 CUDA 行为与开销验证列入下一次 WSL2 清单。
 
 ## 已推迟、当前不决策
 
