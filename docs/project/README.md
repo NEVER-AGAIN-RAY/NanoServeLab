@@ -3,10 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；纯 per-request 指标派生已合并，第一版 saturated 混合 workload 已在独立分支实现
-- 当前主线：项目所有者已明确接受 `NSL-S2-SAT-v1`；它固定 48 个短请求和 16 个长请求的长度、顺序、种子、准入边界与未来原始格式；当前不含 driver、聚合或 benchmark
+- 当前阶段：阶段 2——指标与混合负载；纯 per-request 指标派生与第一版 saturated 混合 workload 均已合并
+- 当前主线：实现 saturated admission driver 与 schema v1 原始 JSON 写出，把 `NSL-S2-SAT-v1` 接到已验证的 timing recorder；暂不做聚合或 benchmark
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
-- 阶段 2 状态：未完成；指标派生已交付，mixed workload 合约/manifest 尚未合并，也尚无 driver 或正式指标实验
+- 阶段 2 状态：未完成；timing、单请求指标与 mixed workload 合约已交付，尚无 driver、聚合或正式指标实验
 
 ## 60 秒恢复流程
 
@@ -44,7 +44,7 @@
 
 ### 仓库基线
 
-- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试、结构化 Step Snapshot、阶段 1 baseline、阶段 2 指标合约、request timing 记录层和纯 per-request 指标派生；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
+- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试、结构化 Step Snapshot、阶段 1 baseline、阶段 2 指标合约、request timing 记录层、纯 per-request 指标派生和 `NSL-S2-SAT-v1` workload；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
 - 上游基线：`GeeeekExplorer/nano-vllm` 的 `bb823b3`
 - `origin` 是 `NEVER-AGAIN-RAY/NanoServeLab`；`upstream` 只用于跟踪官方仓库，禁止推送。
 - 根目录 `README.md` 保留上游 nano-vLLM 说明；NanoServeLab 自有状态、实验与环境文档分别放在 `docs/project/`、`docs/experiments/` 与 `environment/`。
@@ -77,6 +77,7 @@
 | 阶段 2 指标边界合约 | 已合并 | [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8)，merge `a367963` | 固定 engine-side TTFT、TPOT、E2E、Queue Time 与验证门槛；无运行时代码 |
 | 阶段 2 request timing 记录层 | 已合并 | [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11)，merge `5f72b60` | 默认关闭的原始事件记录；Mac CPU 与 WSL2/CUDA 行为门槛均通过 |
 | 阶段 2 per-request 指标派生 | 已合并 | [PR #13](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/13)，merge `5e38dbc` | 纯函数重算 Queue Time、TTFT、E2E、Mean TPOT；33 个 Mac 测试通过 |
+| 阶段 2 saturated 混合 workload | 已合并 | [PR #14](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/14)，merge `888aef1` | 所有者确认的 `NSL-S2-SAT-v1` 合约、不可变 manifest 与指纹；36 个 Mac 测试通过 |
 
 ### 阶段 1 最终交付
 
@@ -96,8 +97,8 @@
 - 受控 EOS 用真实采样 Token 作为测试哨兵，在 `max_tokens=8` 前经 EOS 分支完成；它不冒充模型自然生成 tokenizer EOS。recorder on/off 行为进程与 3×on、3×off 冒烟的输出 Token 哈希均一致，所有 timing 记录齐全且单调。
 - 3 次 on 与 3 次 off 小 workload 的成对差值方向不一致；只能结论为未观察到一致的异常级退化，不能声称 recorder 加速、零开销或得到正式性能结果。完整方法、原始值、SHA-256 与限制见 `docs/experiments/timing-validation-2026-07-22.md`。
 - [PR #13](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/13) 已于 2026-07-22 合并到 `main`，merge commit 为 `5e38dbc`。`derive_request_metrics(record) -> RequestMetrics` 以纯函数重算 Queue Time、TTFT、E2E 和 Mean TPOT；单 Token TPOT 为 `None`，缺失/乱序/未完成记录抛 `ValueError`；Mac 共 33 个测试通过。
-- 独立分支 `codex/stage2-saturated-workload` 新增 `research/stage2_workload.py`：固定 64 个请求，类别顺序 `[short, long, short, short] * 16`；short 为 128→32 Token（48 个），long 为 1024→256 Token（16 个）；manifest SHA-256 为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`。
-- 新增 saturated workload 合约和 3 个确定性 CPU 测试；与既有测试合计 36 个全部通过，`py_compile` 通过。未实现 driver，未运行 CUDA 或 benchmark，无性能结论；阶段 2 仍未完成。
+- [PR #14](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/14) 已于 2026-07-22 合并到 `main`，merge commit 为 `888aef1`。`research/stage2_workload.py` 固定 64 个请求，类别顺序 `[short, long, short, short] * 16`；short 为 128→32 Token（48 个），long 为 1024→256 Token（16 个）；manifest SHA-256 为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`。
+- saturated workload 合约和 3 个确定性 CPU 测试已进入主线；与既有测试合计 36 个全部通过，`py_compile`、指纹重算与 `git diff --check` 通过。未实现 driver，未运行 CUDA 或 benchmark，无性能结论；阶段 2 仍未完成。
 - 2026-07-22 项目所有者本人明确接受 `NSL-S2-SAT-v1` 的规模、3:1 比例、长度、顺序和 saturated 准入设定。`docs/experiments/saturated-workload.md` 已记录该决策的归属、每组参数决定的实验条件以及未来必须通过新 workload ID 修改的流程；这些设定不代表上游默认值、真实流量或已验证最优值。
 
 ### 环境与阻塞
@@ -108,45 +109,46 @@
 - 阶段 1 已完整交付，没有遗留运行阻塞；WSL 直连 GitHub HTTPS 曾暂时超时，但正式实验所需 commit 已通过 Mac 的验证 bundle 同步。
 - 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都正常完成；本轮没有为了改善数字而改变 cache limit。运行期间未连续记录温度、功耗或时钟，stdout/stderr 也未单独归档，这些限制已写入正式实验记录。
 - WSL 直连 GitHub fetch 本轮仍未成功；使用 Mac 生成并验证的最小 Git bundle 将 PR #11 精确提交同步到独立 WSL 验证分支，没有改动旧 baseline 分支。该网络问题未阻塞 CUDA 验收。
-- 当前有可复现的参考 baseline 和通过真实 CUDA 路径的原始 timing 记录层，但没有阶段 2 混合 workload、派生指标实验或性能提升结论。
+- 当前有可复现的参考 baseline、通过真实 CUDA 路径的原始 timing 记录层和已冻结的阶段 2 混合 workload，但没有 saturated driver、派生指标正式实验或性能提升结论。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**审阅并合并 NSL-S2-SAT-v1 workload 合约与 manifest**
+**实现 saturated admission driver 与 schema v1 原始 JSON 写出**
 
 ### 为什么现在做
 
-per-request 指标派生已经合并。第一版 saturated workload 已在独立分支固定为可执行、不可变的 manifest，且项目所有者已经接受其研究设计；下一步完成记录与合并，再单独实现 driver，不把设计和真实 CUDA 实验塞进同一 PR。
+timing recorder、per-request 指标派生和项目所有者确认的 `NSL-S2-SAT-v1` 都已进入 `main`。下一步用最小项目级 driver 把三者连成可执行纵向切片，先保存事实型原始数据，再单独实现聚合，避免运行流程、统计口径和调度策略同时变化。
 
 ### 本轮要回答的问题
 
-- 明确记录 48 short / 16 long、128→32 / 1024→256 与固定交错顺序是项目所有者接受的第一版合成场景，而非默认值或最优值；
-- manifest 构造和 SHA-256 是否能唯一固定未来三次独立进程输入；
-- saturated admission、warmup、measurement window 和原始 schema 是否没有混入客户端在线语义；
-- 未来改变规模、比例、长度、seed、采样或引擎固定项时，是否有明确的新版本与复验路径。
+- warmup timing record 如何原样保存且不混入 64 个 measured requests；
+- 如何保证 64 次 `add_request()` 全部发生在第一次 `step()` 之前，并保留固定 `request_index` 顺序；
+- 如何在不修改上游核心接口的前提下可靠映射 `request_index`、进程内 `seq_id` 与 recorder 原始事件；
+- 成功和失败运行如何都写出包含仓库、环境、模型、引擎、manifest 指纹与 measurement 边界的 schema v1 JSON。
 
 ### 明确范围
 
-本切片只交付 workload 定义与 CPU 合约：
+本切片只交付 driver、原始 writer 与 CPU fake-engine 合约：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
 - 不修改阶段 1 `bench.py`；
-- 不实现 LLM driver、JSON writer、指标聚合、在线到达、数据库、Dashboard 或可视化；
-- 不运行 CUDA 或 benchmark，不给出性能结论。
+- 不在原始 JSON 中重复保存 Queue Time、TTFT、TPOT、E2E 或 percentile；
+- 不实现指标聚合、自定义调度、在线到达、数据库、Dashboard 或可视化；
+- Mac 只做语法、纯逻辑和 fake-engine 测试；真实 CUDA 冒烟与三次独立进程运行留到 WSL2，不提前给出性能结论。
 
 ### 完成标准
 
-- 64 个请求的类别、顺序、长度、Token 范围、总量和 manifest 指纹由 CPU 测试固定；
-- 文档明确全部准入先于第一次 step，且不冒充同一 arrival timestamp 或在线流量；
-- 原始 schema 只保存事实，不重复写派生指标；
-- 不把本切片描述为阶段 2 完成。
+- CPU fake engine 证明 warmup 分离、64 次 measured admission 全部先于第一次 step、固定顺序和计量边界；
+- schema v1 writer 固定必需字段、manifest 指纹、原始 timing records 与失败保留行为；
+- 真实 nano-vLLM/CUDA import 延迟到 WSL2 入口，Mac 不安装 CUDA-only 依赖；
+- PR 在 WSL2 真实 CUDA 冒烟前保持 Draft，不运行或声称正式 benchmark 结果。
 
 ## 立即下一步
 
-1. 审阅并创建 `codex/stage2-saturated-workload` 的 Draft PR；未审阅前不转 Ready。
-2. workload 合约进入 `main` 后，再实现 saturated admission driver 与 schema v1 原始写出。
+1. 在独立分支实现最小 saturated admission driver、schema v1 writer 与 CPU fake-engine 测试，创建 Draft PR。
+2. Mac 审阅通过后，在 WSL2 做真实 CUDA 冒烟；再按合约运行三次全新进程并保存原始 JSON，之后才进入聚合切片。
 
 ## 已推迟、当前不决策
 
@@ -156,4 +158,4 @@ per-request 指标派生已经合并。第一版 saturated workload 已在独立
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在纯 per-request 指标派生完成后再分别决策，当前不提前实现。
+这些问题在 driver、原始写出和 WSL2 行为门槛完成后再分别决策，当前不提前实现。
