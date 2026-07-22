@@ -78,3 +78,4 @@
 - 完成 3 次 recorder-on 与 3 次 recorder-off 全新进程冒烟。六次输出 Token 哈希一致；on/off measured elapsed 的样本均值分别为 780.764324 ms 和 815.489169 ms，但成对差值方向不一致且样本标准差约 60–66 ms，只能说明未观察到一致的异常级退化，不构成 recorder 加速、零开销或正式性能结论。
 - 10 份 schema v1 原始 JSON 与验收 runner 已保留在 WSL，并备份到 Mac 的 Git 忽略目录；双端逐文件 SHA-256 一致。完整协议、原始值、哈希、解释边界和限制记录在 `docs/experiments/timing-validation-2026-07-22.md`。
 - PR #11 的 WSL2/CUDA 行为门槛已满足，但阶段 2 仍未完成；下一实现目标切换为纯 per-request 指标派生，用确定性 CPU 测试固定 Queue Time、TTFT、E2E、TPOT 和无效/空值规则，不同时实现混合 workload 或聚合框架。
+- [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11) 在最终实时核对 HEAD `1cc8cca`、无评论/审阅阻塞且 GitHub 判定 `CLEAN / MERGEABLE` 后转为 Ready，并以 merge commit `5f72b60b167c3204375b0549f67a9bdb147d7325` 合并到 `main`。阶段 2 的最小原始 timing 记录层至此完成；下一目标保持为纯 per-request 指标派生。
