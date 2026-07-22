@@ -88,6 +88,7 @@
 - [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 在独立分支 `codex/stage2-metric-contract` 承载阶段 2 指标边界合约；base 已调整为 `main`，仍保持 Draft。
 - `docs/experiments/metrics.md` 已根据实际源码固定 Scheduler 准入、首次调度、首个真实 Completion Token、完成和同步返回边界；明确当前只能报告引擎侧 TTFT/TPOT/E2E，不能冒充客户端流式延迟。
 - 指标合约选择 `time.perf_counter_ns()` 作为未来可注入 monotonic clock，规定 timestamp write-once、单 Token TPOT 为 `null`、原始记录与派生指标分离，并给出 Chunked Prefill、Prefix Cache、抢占、EOS 和非成功 outcome 的 CPU 测试矩阵。当前没有新增指标代码，也没有运行新 benchmark。
+- 阶段 2 第一版混合负载已固定为 saturated arrival：warmup 后，全部 measured 请求在第一次 Scheduler step 前依次完成准入，使首次调度面对完整长短混合队列。它用于验证指标与调度顺序，不代表固定速率、Poisson 或客户端在线到达。
 - 当前只需审阅、验证并合并该合约；阶段 1 不再作为阶段 2 的开放前置项，最小 timing record 代码尚未开工。
 
 ### 环境与阻塞
@@ -152,7 +153,7 @@
 
 - Snapshot 是否直接接入 `LLMEngine.step()` 的可选 observer；
 - 是否导出 JSONL 作为实验原始 trace，以及长期原始数据的离机归档位置；
-- 长短混合 workload 的具体到达分布与长度比例；
+- 长短请求的精确长度范围、比例与总请求数；第一版到达模型已固定为 saturated arrival，开放式在线到达留待后续独立切片；
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
