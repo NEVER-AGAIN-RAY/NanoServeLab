@@ -65,3 +65,7 @@
 - 项目所有者确认阶段 2 第一版混合负载采用 saturated arrival：warmup 后，全部 measured 请求在第一次 Scheduler step 前完成准入，以固定完整混合等待队列。该场景不称为固定速率、Poisson 或真实客户端在线到达；长短请求的精确长度、比例和总数另行冻结。
 - 完成 PR #8 最终技术审阅：合约映射的 `LLMEngine`、`Scheduler`、`Sequence`、`ModelRunner` 与 `SamplingParams` 自源码核对基线后未变化，四个时间事件、TPOT 空值、抢占、Prefix Cache、同步 API 和聚合规则均能由当前生命周期唯一实现；PR 无评论、审阅或检查阻塞，`git diff --check` 通过。
 - [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 转为 Ready 后合并，merge commit 为 `a3679634bdc065a11eb645be099ddc2f94c84fe1`。该 PR 只有指标合约与状态文档，没有运行时代码或 benchmark；唯一下一目标切换为最小 per-request timing record 与 fake-clock CPU 测试。
+- 在独立分支 `cursor/stage2-request-timing-core` 实现 Scheduler 级最小 per-request timing record：新增 `nanovllm/engine/request_timing.py`，`Scheduler(..., timing_recorder=None)` 可选注入；默认关闭时不调用时钟、不创建记录。
+- 事件写入位置按合约落地：`add()` 入口记录 Arrival；`schedule()` 返回前 write-once First Scheduled；`postprocess()` 在真实 `append_token` 后写 First Output / 更新 `output_tokens`；状态置 `FINISHED` 后、KV 释放前写 Completion（`outcome="finished"`）。
+- 记录独立于 KV Block 生命周期，不参与排序/准入/抢占/分配；未修改 `LLMEngine`、`Sequence`、`BlockManager`、`ModelRunner`、`Config`、`bench.py` 或调度策略。
+- 新增 `tests/test_request_timing.py`（fake monotonic clock，无 sleep）。Mac 上与 lifecycle、snapshot、bench 合约测试共 15 个全部通过；`py_compile` 与 `git diff --check` 通过。未接入公开引擎开关，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论；阶段 2 未完成。

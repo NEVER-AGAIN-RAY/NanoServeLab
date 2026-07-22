@@ -3,9 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；指标边界合约已合并，进入最小 timing record 切片
-- 当前主线：阶段 1 已完整交付，阶段 2 指标合约已通过 PR #8 进入 `main`；下一步实现最小只读 per-request timing record 与 CPU 测试
+- 当前阶段：阶段 2——指标与混合负载；最小 Scheduler timing record 已在独立分支实现，尚未合并
+- 当前主线：合约已在 `main`；分支 `cursor/stage2-request-timing-core` 完成默认关闭的只读 timing record 与 fake-clock CPU 测试；尚未接入公开 LLMEngine 开关，也未做 WSL2/CUDA 验证
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
+- 阶段 2 状态：未完成；本切片只交付原始生命周期记录，不含指标聚合、混合 workload 或 benchmark
 
 ## 60 秒恢复流程
 
@@ -86,11 +87,11 @@
 
 ### 当前活动工作
 
-- [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 已于 2026-07-22 合并到 `main`，merge commit 为 `a367963`；最终审阅未发现阻塞问题，改动仅涉及阶段 2 合约和项目状态文档。
-- `docs/experiments/metrics.md` 已根据实际源码固定 Scheduler 准入、首次调度、首个真实 Completion Token、完成和同步返回边界；明确当前只能报告引擎侧 TTFT/TPOT/E2E，不能冒充客户端流式延迟。
-- 指标合约选择 `time.perf_counter_ns()` 作为未来可注入 monotonic clock，规定 timestamp write-once、单 Token TPOT 为 `null`、原始记录与派生指标分离，并给出 Chunked Prefill、Prefix Cache、抢占、EOS 和非成功 outcome 的 CPU 测试矩阵。当前没有新增指标代码，也没有运行新 benchmark。
-- 阶段 2 第一版混合负载已固定为 saturated arrival：warmup 后，全部 measured 请求在第一次 Scheduler step 前依次完成准入，使首次调度面对完整长短混合队列。它用于验证指标与调度顺序，不代表固定速率、Poisson 或客户端在线到达。
-- 当前没有开放的 timing record 实现 PR；唯一下一目标是在新分支完成最小 timing record 与 fake-clock CPU 测试。
+- [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 已于 2026-07-22 合并到 `main`，merge commit 为 `a367963`；指标边界合约已就绪。
+- 独立分支 `cursor/stage2-request-timing-core` 已实现 Scheduler 级最小 per-request timing record：`RequestTimingRecorder` 可选注入，默认 `timing_recorder=None` 关闭；不参与调度/KV 决策，不修改 `LLMEngine`、`Sequence`、`BlockManager`、`Config` 或 `bench.py`。
+- Mac fake-clock CPU 测试通过：新增 `tests/test_request_timing.py`，并与既有 lifecycle、snapshot、bench 合约测试一并验证；未运行 benchmark，无性能结论。
+- 尚未接入公开 LLMEngine 开关；尚未进行 WSL2/CUDA 行为或 instrumentation overhead 验证；不得将本切片描述为阶段 2 已完成。
+- `docs/experiments/metrics.md` 仍是公式与事件边界的稳定合约；本切片只保存原始时间戳与 Token 计数，不计算 Queue Time、TTFT、TPOT、E2E 或 percentile。
 
 ### 环境与阻塞
 
@@ -105,50 +106,39 @@
 
 ### 目标名称
 
-**Minimal per-request timing record**
+**WSL2 timing-record behavior checklist + optional LLMEngine wiring（下一切片）**
 
 ### 为什么现在做
 
-阶段 1 的环境、模型、固定 workload、三次独立进程、原始 JSON 与统计记录均已实际验证并合并。`docs/experiments/metrics.md` 已把 Scheduler 准入、首次调度、真实首 Token、完成和同步 API 返回映射到当前源码，并固定四个核心延迟公式、空值语义、聚合方法和 WSL2 验证边界。下一切片只把这份合约变成最小只读记录和确定性 CPU 测试，不同时扩展 workload 或输出框架。
+最小 Scheduler timing record 已在独立分支完成 Mac fake-clock CPU 验证，且默认关闭、不改变调度/KV。下一切片才决定是否暴露公开引擎开关，以及如何在 WSL2 上核对真实 CUDA 路径上的事件边界与 instrumentation overhead；本切片不运行 benchmark。
 
 ### 本轮要回答的问题
 
-- timing record 应由哪个最小组件持有，如何在 KV Block 释放后继续保留原始事件；
-- 如何注入 fake `perf_counter_ns`，让 CPU 生命周期测试不使用 `sleep` 且完全确定；
-- 如何在不把 Chunked Prefill 临时采样误算为首 Token 的前提下，write-once 记录 Arrival、First Scheduled、First Output 与 Completion；
-- 如何证明记录层不改变 Scheduler 选择、Sequence 状态、Prefix Cache、抢占或 KV Block 生命周期。
+- 是否、以及如何把 `RequestTimingRecorder` 以可选开关接到 `LLMEngine`，同时保持默认关闭；
+- WSL2 上 Arrival / First Scheduled / First Output / Completion 是否仍与合约一致；
+- instrumentation 是否引入可观察开销，以及如何诚实记录限制；
+- 何时才开始混合 workload 与派生指标聚合。
 
 ### 明确范围
 
-本轮只实现最小记录层和 CPU 测试：
+下一切片再决策引擎接线与 WSL2 验证；当前分支只保留最小记录层：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
-- 不提前构造完整 benchmark 框架或在线服务；
-- 不实现客户端流式 API、混合到达 workload、JSONL、数据库、Dashboard 或可视化；
-- 不虚构当前不存在的 cancel/failed 引擎状态，非成功 outcome 只按实际可观察能力记录；
-- 使用可注入 monotonic clock 和独立原始记录，不用 UTC 或 `sleep` 计算 duration；
-- 只做 Mac 可用的 CPU 行为测试；真实 CUDA 事件边界和 instrumentation overhead 留给 WSL2。
-
-### 实施顺序
-
-1. 先解释记录接口、所有权和 write-once 不变量，选择最小代码落点。
-2. 实现可注入 clock 的 per-request 原始 timing record，不把派生统计写回运行时状态。
-3. 用 CPU 测试覆盖普通生命周期、两轮 Chunked Prefill、重复调度、单/多 Token、EOS、Prefix Cache、抢占和完成后 KV 释放。
-4. Mac 全部测试通过后更新状态；只把真实 CUDA 路径与开销验证列入 WSL2 清单，不在本切片运行 benchmark。
+- 不实现混合到达 workload、JSONL、数据库、Dashboard 或可视化；
+- 不计算 Queue Time、TTFT、TPOT、E2E、percentile 或吞吐汇总；
+- 不运行 CUDA benchmark，不给出性能结论。
 
 ### 完成标准
 
-- Arrival、First Scheduled、First Output 和 Completion 均按合约 write-once，缺失事件保持 `null`；
-- Chunked Prefill 临时采样不触发首 Token，单 Token TPOT 可重算为 `null`；
-- 完成记录在 KV Block 释放后仍可读取，现有 Scheduler 生命周期与 Snapshot 测试继续通过；
-- 新增 CPU 测试使用 fake clock，证明事件顺序和公式，不依赖 CUDA 或 wall-clock sleep；
-- 不把 Mac 测试描述为真实 CUDA 时间准确性或低开销结论。
+- Draft PR 可供审阅；默认关闭行为与既有 CPU 测试保持通过；
+- 明确列出尚未完成的 WSL2/CUDA 验证项；
+- 不把本切片描述为阶段 2 完成。
 
 ## 立即下一步
 
-1. 在新的独立实现分支解释 recorder 接口、所有权、可注入时钟和 write-once 不变量。
-2. 实现最小 per-request timing record，并用 fake-clock CPU 测试覆盖 Chunked Prefill、首 Token、完成和 KV 释放边界。
-3. Mac 全部测试与审阅通过后，再制定 WSL2 真实 CUDA 行为与 instrumentation overhead 验证清单；本切片不运行 benchmark。
+1. 审阅并合并（或继续修订）`cursor/stage2-request-timing-core` 的 Draft PR；不得在未审阅时转 Ready。
+2. 单独切片决定是否接入公开 `LLMEngine` 开关。
+3. 在 WSL2 制定并执行真实 CUDA 行为与 instrumentation overhead 验证清单；本切片不运行 benchmark。
 
 ## 已推迟、当前不决策
 
