@@ -63,3 +63,5 @@
 - [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 转为 Ready 后合并，merge commit 为 `22be4f9c442e2aacfb16682220801416845ce992`。至此阶段 1 的代码、测试、CUDA 实验、原始数据备份、统计与书面记录全部交付；没有据此声称性能提升。
 - [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 的 base 已从阶段 1 分支调整为 `main`，继续仅承载阶段 2 指标边界合约；它保持 Draft，不在阶段 1 收尾中合并。
 - 项目所有者确认阶段 2 第一版混合负载采用 saturated arrival：warmup 后，全部 measured 请求在第一次 Scheduler step 前完成准入，以固定完整混合等待队列。该场景不称为固定速率、Poisson 或真实客户端在线到达；长短请求的精确长度、比例和总数另行冻结。
+- 完成 PR #8 最终技术审阅：合约映射的 `LLMEngine`、`Scheduler`、`Sequence`、`ModelRunner` 与 `SamplingParams` 自源码核对基线后未变化，四个时间事件、TPOT 空值、抢占、Prefix Cache、同步 API 和聚合规则均能由当前生命周期唯一实现；PR 无评论、审阅或检查阻塞，`git diff --check` 通过。
+- [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 转为 Ready 后合并，merge commit 为 `a3679634bdc065a11eb645be099ddc2f94c84fe1`。该 PR 只有指标合约与状态文档，没有运行时代码或 benchmark；唯一下一目标切换为最小 per-request timing record 与 fake-clock CPU 测试。
