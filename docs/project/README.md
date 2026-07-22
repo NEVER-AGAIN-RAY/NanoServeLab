@@ -109,6 +109,7 @@
 - 阶段 1 已完整交付，没有遗留运行阻塞；WSL 直连 GitHub HTTPS 曾暂时超时，但正式实验所需 commit 已通过 Mac 的验证 bundle 同步。
 - 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都正常完成；本轮没有为了改善数字而改变 cache limit。运行期间未连续记录温度、功耗或时钟，stdout/stderr 也未单独归档，这些限制已写入正式实验记录。
 - WSL 直连 GitHub fetch 本轮仍未成功；使用 Mac 生成并验证的最小 Git bundle 将 PR #11 精确提交同步到独立 WSL 验证分支，没有改动旧 baseline 分支。该网络问题未阻塞 CUDA 验收。
+- Mac 的 GitHub 连接已于 2026-07-22 修复并复验：删除未监听的 `127.0.0.1:7897` 全局 Git 代理后，Git HTTPS 与 `gh` 恢复；`ChatGPT Codex Connector` 已安装到 `NEVER-AGAIN-RAY` 且仅授权 NanoServeLab，连接器仓库与 PR 读取通过。完整根因与恢复规则见 `environment/mac.md`。
 - 当前有可复现的参考 baseline、通过真实 CUDA 路径的原始 timing 记录层和已冻结的阶段 2 混合 workload，但没有 saturated driver、派生指标正式实验或性能提升结论。
 
 ## 全局决策：下一实现目标
