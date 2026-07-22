@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；指标边界合约已完成并在 Draft PR #8 审阅
-- 当前主线：阶段 1 已通过 PR #7 完整合并；阶段 2 合约进入 `main` 后，下一步实现最小只读 per-request timing record 与 CPU 测试
+- 当前阶段：阶段 2——指标与混合负载；指标边界合约已合并，进入最小 timing record 切片
+- 当前主线：阶段 1 已完整交付，阶段 2 指标合约已通过 PR #8 进入 `main`；下一步实现最小只读 per-request timing record 与 CPU 测试
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 
 ## 60 秒恢复流程
@@ -71,6 +71,7 @@
 | 中文核心模块导读 | 已合并 | [PR #1](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/1)，merge `be4506a` | 仅模块级 docstring，无行为变化 |
 | Scheduler Step Snapshot | 已合并 | [PR #5](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/5)，merge `2588827` | 只读观察层；WSL2 全部 2 个测试通过 |
 | 阶段 1 可复现 nano-vLLM baseline | 已合并 | [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7)，merge `22be4f9` | WSL2 三次独立进程完成；原始 JSON、统计与限制均已归档 |
+| 阶段 2 指标边界合约 | 已合并 | [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8)，merge `a367963` | 固定 engine-side TTFT、TPOT、E2E、Queue Time 与验证门槛；无运行时代码 |
 
 ### 阶段 1 最终交付
 
@@ -85,11 +86,11 @@
 
 ### 当前活动工作
 
-- [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 在独立分支 `codex/stage2-metric-contract` 承载阶段 2 指标边界合约；base 已调整为 `main`，仍保持 Draft。
+- [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 已于 2026-07-22 合并到 `main`，merge commit 为 `a367963`；最终审阅未发现阻塞问题，改动仅涉及阶段 2 合约和项目状态文档。
 - `docs/experiments/metrics.md` 已根据实际源码固定 Scheduler 准入、首次调度、首个真实 Completion Token、完成和同步返回边界；明确当前只能报告引擎侧 TTFT/TPOT/E2E，不能冒充客户端流式延迟。
 - 指标合约选择 `time.perf_counter_ns()` 作为未来可注入 monotonic clock，规定 timestamp write-once、单 Token TPOT 为 `null`、原始记录与派生指标分离，并给出 Chunked Prefill、Prefix Cache、抢占、EOS 和非成功 outcome 的 CPU 测试矩阵。当前没有新增指标代码，也没有运行新 benchmark。
 - 阶段 2 第一版混合负载已固定为 saturated arrival：warmup 后，全部 measured 请求在第一次 Scheduler step 前依次完成准入，使首次调度面对完整长短混合队列。它用于验证指标与调度顺序，不代表固定速率、Poisson 或客户端在线到达。
-- 当前只需审阅、验证并合并该合约；阶段 1 不再作为阶段 2 的开放前置项，最小 timing record 代码尚未开工。
+- 当前没有开放的 timing record 实现 PR；唯一下一目标是在新分支完成最小 timing record 与 fake-clock CPU 测试。
 
 ### 环境与阻塞
 
@@ -145,9 +146,9 @@
 
 ## 立即下一步
 
-1. 由项目所有者审阅 `docs/experiments/metrics.md` 的事件命名、公式和结论边界。
-2. 审阅通过并完成文档一致性与静态验证后合并 Draft PR #8，不运行新 benchmark。
-3. 合约进入 `main` 后，在新的独立实现分支完成最小 timing record 与 fake-clock CPU 测试，再制定 WSL2 行为与 instrumentation overhead 验证清单。
+1. 在新的独立实现分支解释 recorder 接口、所有权、可注入时钟和 write-once 不变量。
+2. 实现最小 per-request timing record，并用 fake-clock CPU 测试覆盖 Chunked Prefill、首 Token、完成和 KV 释放边界。
+3. Mac 全部测试与审阅通过后，再制定 WSL2 真实 CUDA 行为与 instrumentation overhead 验证清单；本切片不运行 benchmark。
 
 ## 已推迟、当前不决策
 
