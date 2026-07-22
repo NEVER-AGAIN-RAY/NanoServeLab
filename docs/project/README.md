@@ -3,10 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；最小 timing record + 可选 LLMEngine 接线已验证并合并，进入纯 per-request 指标派生
-- 当前主线：PR #11 已进入 `main`；下一切片只把不可变原始记录转换为 Queue Time、TTFT、E2E 和 Mean TPOT，不同时扩展混合 workload 或聚合框架
+- 当前阶段：阶段 2——指标与混合负载；纯 per-request 指标派生已在独立分支实现，尚未合并
+- 当前主线：PR #11 已在 `main`；分支 `cursor/stage2-request-metrics` 把不可变 `RequestTimingRecord` 转换为 Queue Time、TTFT、E2E、Mean TPOT；不含聚合、混合 workload 或 benchmark
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
-- 阶段 2 状态：未完成；已交付指标合约和原始生命周期记录层，尚不含指标聚合、混合 workload 或正式 benchmark
+- 阶段 2 状态：未完成；派生层尚未合并，也尚无混合 workload 或正式指标实验
 
 ## 60 秒恢复流程
 
@@ -93,7 +93,9 @@
 - Mac 轻量 package bootstrap 已验证 recorder / Scheduler / bench CPU 语义与 `py_compile`；WSL2 精确提交 `e0914e2` 的完整 18 项单元测试通过，真实 Qwen3-0.6B `LLM(..., timing_recorder=...)`、CUDA Graph、Prefill/Decode、单/多 Token 与 `max_tokens` 路径成功。
 - 受控 EOS 用真实采样 Token 作为测试哨兵，在 `max_tokens=8` 前经 EOS 分支完成；它不冒充模型自然生成 tokenizer EOS。recorder on/off 行为进程与 3×on、3×off 冒烟的输出 Token 哈希均一致，所有 timing 记录齐全且单调。
 - 3 次 on 与 3 次 off 小 workload 的成对差值方向不一致；只能结论为未观察到一致的异常级退化，不能声称 recorder 加速、零开销或得到正式性能结果。完整方法、原始值、SHA-256 与限制见 `docs/experiments/timing-validation-2026-07-22.md`。
-- `docs/experiments/metrics.md` 仍是公式与事件边界的稳定合约；本切片只保存原始时间戳与 Token 计数，不计算 Queue Time、TTFT、TPOT、E2E 或 percentile。
+- 独立分支 `cursor/stage2-request-metrics` 新增纯函数派生层：`derive_request_metrics(record) -> RequestMetrics`（`queue_time_ms` / `ttft_ms` / `e2e_ms` / `mean_tpot_ms`）；不修改 Scheduler、LLMEngine 或 recorder；单 Token 时 TPOT 为 `None`；缺失/乱序/未完成记录抛 `ValueError`。
+- Mac 轻量 package bootstrap：`tests.test_request_metrics` 与既有 timing/lifecycle/snapshot/bench 测试共 33 个全部通过；`py_compile` 与 `git diff --check` 通过。未运行 CUDA 或 benchmark，无性能结论；阶段 2 仍未完成。
+- `docs/experiments/metrics.md` 仍是公式与事件边界的稳定合约；本切片只实现单请求派生，不含 percentile、吞吐或混合 workload。
 
 ### 环境与阻塞
 
@@ -109,22 +111,21 @@
 
 ### 目标名称
 
-**Pure per-request metric derivation**
+**审阅并合并纯 per-request 指标派生，随后冻结 saturated 混合 workload**
 
 ### 为什么现在做
 
-可选 `timing_recorder` 已接入 `LLMEngine`，`snapshots()` 提供可枚举不可变入口，真实 WSL2/CUDA 事件边界和默认关闭行为已经验证。下一最小切片应保持运行时只记录原始事实，在独立纯函数层把单条不可变 record 转换为 Queue Time、TTFT、TPOT 和 E2E；先固定错误/空值语义，再进入混合 workload。
+纯函数派生层已在独立分支实现并用确定性 CPU 测试固定公式与无效输入规则。下一步先审阅合并本切片，再单独冻结 saturated 长短混合 workload；不同时扩展聚合或可视化。
 
 ### 本轮要回答的问题
 
-- 如何让派生层只读取 `RequestTimingRecord`，不回写或复制修改原始时间戳；
-- 如何明确区分成功记录、缺失事件、乱序时间戳和无效 Token 计数；
-- 如何按合约处理单 Token 请求的 TPOT `null`，并统一纳秒到毫秒的转换；
-- 如何用 fake records 做完全确定的 CPU 测试，不依赖 CUDA 或 wall-clock。
+- Draft PR 的公式、空值与 `ValueError` 顺序是否与 `metrics.md` 一致；
+- 派生层合并后，如何冻结 saturated 混合负载的精确长度、比例、总数与输出格式；
+- 何时才开始 percentile / 吞吐汇总。
 
 ### 明确范围
 
-下一切片只实现单请求派生值和 CPU 测试：
+本切片已交付单请求派生；后续切片再决策：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
 - 不在 Scheduler 或 recorder 内保存派生指标；
@@ -133,15 +134,14 @@
 
 ### 完成标准
 
-- 完整成功记录可重算 Queue Time、engine-side TTFT、E2E 和 Mean TPOT；
-- `output_tokens == 1` 时 TPOT 明确为 `None`，`output_tokens <= 0` 或事件缺失/乱序不能伪造 0；
-- 单位转换、公式和无效输入规则均由确定性 CPU 测试固定；
-- 原始 `RequestTimingRecord` 保持不可变，阶段 2 仍不被描述为完成。
+- Draft PR 可供 Codex 审阅；Mac CPU 测试保持通过；
+- 不把本切片描述为阶段 2 完成；
+- 合并后再冻结 saturated 混合 workload。
 
 ## 立即下一步
 
-1. 从最新 `main` 建立独立分支，实现纯 per-request 指标派生与 CPU 测试。
-2. 派生层合并后再冻结 saturated 长短混合 workload 的精确长度、比例、总数和输出格式；不在同一切片并行扩展。
+1. 审阅并合并（或修订）`cursor/stage2-request-metrics` 的 Draft PR；不得在未审阅时转 Ready。
+2. 派生层进入 `main` 后，再冻结 saturated 长短混合 workload 的精确长度、比例、总数和输出格式。
 
 ## 已推迟、当前不决策
 
