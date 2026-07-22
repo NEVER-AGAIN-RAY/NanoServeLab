@@ -89,7 +89,7 @@
 
 - [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 已于 2026-07-22 合并到 `main`，merge commit 为 `a367963`；指标边界合约已就绪。
 - 独立分支 `cursor/stage2-request-timing-core` 已实现 Scheduler 级最小 per-request timing record：`RequestTimingRecorder` 可选注入，默认 `timing_recorder=None` 关闭；不参与调度/KV 决策，不修改 `LLMEngine`、`Sequence`、`BlockManager`、`Config` 或 `bench.py`。
-- Mac fake-clock CPU 测试通过：新增 `tests/test_request_timing.py`，并与既有 lifecycle、snapshot、bench 合约测试一并验证；未运行 benchmark，无性能结论。
+- Mac 轻量 package bootstrap 下 fake-clock CPU 测试通过：新增 `tests/test_request_timing.py`，并与既有 lifecycle、snapshot、bench 合约测试共 15 个 OK。该 bootstrap 只绕过 `nanovllm/__init__.py` 的 eager runtime import，用于 Scheduler/bench CPU 测试；普通包导入需要当前 Mac 未安装的完整 nano-vLLM 运行时依赖。未安装新依赖，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论。
 - 尚未接入公开 LLMEngine 开关；尚未进行 WSL2/CUDA 行为或 instrumentation overhead 验证；不得将本切片描述为阶段 2 已完成。
 - `docs/experiments/metrics.md` 仍是公式与事件边界的稳定合约；本切片只保存原始时间戳与 Token 计数，不计算 Queue Time、TTFT、TPOT、E2E 或 percentile。
 

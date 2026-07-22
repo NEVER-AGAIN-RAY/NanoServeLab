@@ -68,4 +68,5 @@
 - 在独立分支 `cursor/stage2-request-timing-core` 实现 Scheduler 级最小 per-request timing record：新增 `nanovllm/engine/request_timing.py`，`Scheduler(..., timing_recorder=None)` 可选注入；默认关闭时不调用时钟、不创建记录。
 - 事件写入位置按合约落地：`add()` 入口记录 Arrival；`schedule()` 返回前 write-once First Scheduled；`postprocess()` 在真实 `append_token` 后写 First Output / 更新 `output_tokens`；状态置 `FINISHED` 后、KV 释放前写 Completion（`outcome="finished"`）。
 - 记录独立于 KV Block 生命周期，不参与排序/准入/抢占/分配；未修改 `LLMEngine`、`Sequence`、`BlockManager`、`ModelRunner`、`Config`、`bench.py` 或调度策略。
-- 新增 `tests/test_request_timing.py`（fake monotonic clock，无 sleep）。Mac 上与 lifecycle、snapshot、bench 合约测试共 15 个全部通过；`py_compile` 与 `git diff --check` 通过。未接入公开引擎开关，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论；阶段 2 未完成。
+- 新增 `tests/test_request_timing.py`（fake monotonic clock，无 sleep）。Mac 轻量 package bootstrap 下与 lifecycle、snapshot、bench 合约测试共 15 个全部通过（绕过 `nanovllm/__init__.py` eager import；普通包导入需完整运行时依赖，当前 Mac 未安装）。`py_compile` 与 `git diff --check` 通过。未安装新依赖，未接入公开引擎开关，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论；阶段 2 未完成。
+- 审阅修订：不可变性测试改为精确断言 `FrozenInstanceError`；文档与 PR 证据改为明确写出 Mac 轻量 package bootstrap 验证方式，避免把普通 `python -m unittest` 误记为已通过。

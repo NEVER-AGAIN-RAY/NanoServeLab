@@ -1,6 +1,7 @@
 """Scheduler 级 per-request timing record 的 fake-clock CPU 测试。"""
 
 import unittest
+from dataclasses import FrozenInstanceError
 from types import SimpleNamespace
 
 from nanovllm.engine.request_timing import RequestTimingRecorder
@@ -151,7 +152,7 @@ class RequestTimingTest(unittest.TestCase):
         self.assertLessEqual(snapshot.first_scheduled_ns, snapshot.first_output_ns)
         self.assertLessEqual(snapshot.first_output_ns, snapshot.completed_ns)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(FrozenInstanceError):
             snapshot.output_tokens = 99
         self.assertEqual(self.recorder.get(self.seq.seq_id).output_tokens, 2)
 
