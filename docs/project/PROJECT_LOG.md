@@ -50,3 +50,10 @@
 - 三份原始 JSON 已从 WSL 备份到 Mac 的 Git 忽略目录，逐文件 SHA-256 完全一致；另记录模型权重 SHA-256 和固定 workload 规范化指纹。完整证据链、命令、逐次数据、统计方法、限制与后续使用规则写入 `docs/experiments/baseline-results-2026-07-21.md`。
 - 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都成功完成；本轮没有修改 cache limit。stdout/stderr 未单独归档、运行期间未连续采集热状态等限制已如实记录。
 - 阶段 1 的正式退出条件已经满足；唯一下一实现目标切换为阶段 2 指标边界合约，先定义 TTFT、TPOT、E2E 与 Queue Time 的生命周期事件、公式和 CPU 可测不变量，不提前改变调度策略或运行新 benchmark。
+
+## 2026-07-22
+
+- 对阶段 1 交付执行最终审计：PR #7 没有待处理 review 或 requested changes，改动范围未触及 `nanovllm/` 核心；Mac 上 7 个 benchmark 合约测试、Python 语法检查、CLI `--help` 与 `git diff --check` 均通过。
+- 重新核对 Mac 留存的三份 schema v1 原始 JSON：实验配置、source commit、模型 revision、workload 规模与 seed 一致，逐文件 SHA-256 与实验记录相符，均值 1014.433126 和样本标准差 4.212859 可由原始值重算得到。
+- [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 转为 Ready 后合并，merge commit 为 `22be4f9c442e2aacfb16682220801416845ce992`。至此阶段 1 的代码、测试、CUDA 实验、原始数据备份、统计与书面记录全部交付；没有据此声称性能提升。
+- [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 的 base 已从阶段 1 分支调整为 `main`，继续仅承载阶段 2 指标边界合约；它保持 Draft，不在阶段 1 收尾中合并。
