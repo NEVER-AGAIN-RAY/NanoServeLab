@@ -3,10 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；纯 per-request 指标派生已在独立分支实现，尚未合并
-- 当前主线：PR #11 已在 `main`；分支 `cursor/stage2-request-metrics` 把不可变 `RequestTimingRecord` 转换为 Queue Time、TTFT、E2E、Mean TPOT；不含聚合、混合 workload 或 benchmark
+- 当前阶段：阶段 2——指标与混合负载；纯 per-request 指标派生已合并，第一版 saturated 混合 workload 已在独立分支实现
+- 当前主线：`NSL-S2-SAT-v1` 已固定 48 个短请求和 16 个长请求的长度、顺序、种子、准入边界与未来原始格式；当前不含 driver、聚合或 benchmark
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
-- 阶段 2 状态：未完成；派生层尚未合并，也尚无混合 workload 或正式指标实验
+- 阶段 2 状态：未完成；指标派生已交付，mixed workload 合约/manifest 尚未合并，也尚无 driver 或正式指标实验
 
 ## 60 秒恢复流程
 
@@ -27,6 +27,7 @@
 | `docs/experiments/baseline-results-2026-07-21.md` | 第一组正式 CUDA baseline 的逐次数据、统计、哈希、有效性与限制 | 作为实验 `NSL-S1-BL-20260721-01` 的固定记录，不覆盖改写为新实验 |
 | `docs/experiments/metrics.md` | 阶段 2 的事件边界、指标公式、空值/聚合规则和验证门槛 | 指标语义或实际生命周期事件变化时同步审阅 |
 | `docs/experiments/timing-validation-2026-07-22.md` | PR #11 的 WSL2/CUDA 行为、受控 EOS、on/off 冒烟、原始文件哈希和限制 | 固定验证 `NSL-S2-TR-20260722-01`，不覆盖改写为正式 benchmark |
+| `docs/experiments/saturated-workload.md` | 阶段 2 第一版 saturated 长短混合 workload 的请求、顺序、指纹、测量与原始格式合约 | 固定 `NSL-S2-SAT-v1`；改变任一固定项必须使用新 workload ID |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
 | `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
@@ -43,7 +44,7 @@
 
 ### 仓库基线
 
-- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试、结构化 Step Snapshot、阶段 1 baseline、阶段 2 指标合约和已验证的最小 request timing 记录层；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
+- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试、结构化 Step Snapshot、阶段 1 baseline、阶段 2 指标合约、request timing 记录层和纯 per-request 指标派生；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
 - 上游基线：`GeeeekExplorer/nano-vllm` 的 `bb823b3`
 - `origin` 是 `NEVER-AGAIN-RAY/NanoServeLab`；`upstream` 只用于跟踪官方仓库，禁止推送。
 - 根目录 `README.md` 保留上游 nano-vLLM 说明；NanoServeLab 自有状态、实验与环境文档分别放在 `docs/project/`、`docs/experiments/` 与 `environment/`。
@@ -75,6 +76,7 @@
 | 阶段 1 可复现 nano-vLLM baseline | 已合并 | [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7)，merge `22be4f9` | WSL2 三次独立进程完成；原始 JSON、统计与限制均已归档 |
 | 阶段 2 指标边界合约 | 已合并 | [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8)，merge `a367963` | 固定 engine-side TTFT、TPOT、E2E、Queue Time 与验证门槛；无运行时代码 |
 | 阶段 2 request timing 记录层 | 已合并 | [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11)，merge `5f72b60` | 默认关闭的原始事件记录；Mac CPU 与 WSL2/CUDA 行为门槛均通过 |
+| 阶段 2 per-request 指标派生 | 已合并 | [PR #13](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/13)，merge `5e38dbc` | 纯函数重算 Queue Time、TTFT、E2E、Mean TPOT；33 个 Mac 测试通过 |
 
 ### 阶段 1 最终交付
 
@@ -93,9 +95,9 @@
 - Mac 轻量 package bootstrap 已验证 recorder / Scheduler / bench CPU 语义与 `py_compile`；WSL2 精确提交 `e0914e2` 的完整 18 项单元测试通过，真实 Qwen3-0.6B `LLM(..., timing_recorder=...)`、CUDA Graph、Prefill/Decode、单/多 Token 与 `max_tokens` 路径成功。
 - 受控 EOS 用真实采样 Token 作为测试哨兵，在 `max_tokens=8` 前经 EOS 分支完成；它不冒充模型自然生成 tokenizer EOS。recorder on/off 行为进程与 3×on、3×off 冒烟的输出 Token 哈希均一致，所有 timing 记录齐全且单调。
 - 3 次 on 与 3 次 off 小 workload 的成对差值方向不一致；只能结论为未观察到一致的异常级退化，不能声称 recorder 加速、零开销或得到正式性能结果。完整方法、原始值、SHA-256 与限制见 `docs/experiments/timing-validation-2026-07-22.md`。
-- 独立分支 `cursor/stage2-request-metrics` 新增纯函数派生层：`derive_request_metrics(record) -> RequestMetrics`（`queue_time_ms` / `ttft_ms` / `e2e_ms` / `mean_tpot_ms`）；不修改 Scheduler、LLMEngine 或 recorder；单 Token 时 TPOT 为 `None`；缺失/乱序/未完成记录抛 `ValueError`。
-- Mac 轻量 package bootstrap：`tests.test_request_metrics` 与既有 timing/lifecycle/snapshot/bench 测试共 33 个全部通过；`py_compile` 与 `git diff --check` 通过。未运行 CUDA 或 benchmark，无性能结论；阶段 2 仍未完成。
-- `docs/experiments/metrics.md` 仍是公式与事件边界的稳定合约；本切片只实现单请求派生，不含 percentile、吞吐或混合 workload。
+- [PR #13](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/13) 已于 2026-07-22 合并到 `main`，merge commit 为 `5e38dbc`。`derive_request_metrics(record) -> RequestMetrics` 以纯函数重算 Queue Time、TTFT、E2E 和 Mean TPOT；单 Token TPOT 为 `None`，缺失/乱序/未完成记录抛 `ValueError`；Mac 共 33 个测试通过。
+- 独立分支 `codex/stage2-saturated-workload` 新增 `research/stage2_workload.py`：固定 64 个请求，类别顺序 `[short, long, short, short] * 16`；short 为 128→32 Token（48 个），long 为 1024→256 Token（16 个）；manifest SHA-256 为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`。
+- 新增 saturated workload 合约和 3 个确定性 CPU 测试；与既有测试合计 36 个全部通过，`py_compile` 通过。未实现 driver，未运行 CUDA 或 benchmark，无性能结论；阶段 2 仍未完成。
 
 ### 环境与阻塞
 
@@ -111,43 +113,44 @@
 
 ### 目标名称
 
-**审阅并合并纯 per-request 指标派生，随后冻结 saturated 混合 workload**
+**审阅并合并 NSL-S2-SAT-v1 workload 合约与 manifest**
 
 ### 为什么现在做
 
-纯函数派生层已在独立分支实现并用确定性 CPU 测试固定公式与无效输入规则。下一步先审阅合并本切片，再单独冻结 saturated 长短混合 workload；不同时扩展聚合或可视化。
+per-request 指标派生已经合并。第一版 saturated workload 已在独立分支固定为可执行、不可变的 manifest；下一步先审阅其规模、顺序、指纹、准入与输出合约，再单独实现 driver，不把设计和真实 CUDA 实验塞进同一 PR。
 
 ### 本轮要回答的问题
 
-- Draft PR 的公式、空值与 `ValueError` 顺序是否与 `metrics.md` 一致；
-- 派生层合并后，如何冻结 saturated 混合负载的精确长度、比例、总数与输出格式；
-- 何时才开始 percentile / 吞吐汇总。
+- 48 short / 16 long、128→32 / 1024→256 与固定交错顺序是否适合作为第一版合成场景；
+- manifest 构造和 SHA-256 是否能唯一固定未来三次独立进程输入；
+- saturated admission、warmup、measurement window 和原始 schema 是否没有混入客户端在线语义。
 
 ### 明确范围
 
-本切片已交付单请求派生；后续切片再决策：
+本切片只交付 workload 定义与 CPU 合约：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
-- 不在 Scheduler 或 recorder 内保存派生指标；
-- 不实现聚合 percentile、吞吐、混合到达 workload、JSONL、数据库、Dashboard 或可视化；
-- 不重新运行已经通过且相关代码未变化的 CUDA 验收，不给出性能结论。
+- 不修改阶段 1 `bench.py`；
+- 不实现 LLM driver、JSON writer、指标聚合、在线到达、数据库、Dashboard 或可视化；
+- 不运行 CUDA 或 benchmark，不给出性能结论。
 
 ### 完成标准
 
-- Draft PR 可供 Codex 审阅；Mac CPU 测试保持通过；
-- 不把本切片描述为阶段 2 完成；
-- 合并后再冻结 saturated 混合 workload。
+- 64 个请求的类别、顺序、长度、Token 范围、总量和 manifest 指纹由 CPU 测试固定；
+- 文档明确全部准入先于第一次 step，且不冒充同一 arrival timestamp 或在线流量；
+- 原始 schema 只保存事实，不重复写派生指标；
+- 不把本切片描述为阶段 2 完成。
 
 ## 立即下一步
 
-1. 审阅并合并（或修订）`cursor/stage2-request-metrics` 的 Draft PR；不得在未审阅时转 Ready。
-2. 派生层进入 `main` 后，再冻结 saturated 长短混合 workload 的精确长度、比例、总数和输出格式。
+1. 审阅并创建 `codex/stage2-saturated-workload` 的 Draft PR；未审阅前不转 Ready。
+2. workload 合约进入 `main` 后，再实现 saturated admission driver 与 schema v1 原始写出。
 
 ## 已推迟、当前不决策
 
 - Snapshot 是否直接接入 `LLMEngine.step()` 的可选 observer；
 - 是否导出 JSONL 作为实验原始 trace，以及长期原始数据的离机归档位置；
-- 长短请求的精确长度范围、比例与总请求数；第一版到达模型已固定为 saturated arrival，开放式在线到达留待后续独立切片；
+- 开放式在线到达、Poisson 或固定速率 workload；
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
