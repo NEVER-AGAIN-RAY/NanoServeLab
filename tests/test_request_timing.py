@@ -187,5 +187,57 @@ class RequestTimingTest(unittest.TestCase):
         self.assertIsNone(scheduler.timing_recorder)
 
 
+class RequestTimingSnapshotsTest(unittest.TestCase):
+    """``snapshots()`` 语义：排序、不可变、不调用时钟。"""
+
+    def test_empty_snapshots_is_empty_tuple(self):
+        recorder = RequestTimingRecorder(clock_ns=FakeClock())
+        snapshots = recorder.snapshots()
+        self.assertIsInstance(snapshots, tuple)
+        self.assertEqual(snapshots, ())
+
+    def test_snapshots_sorted_by_seq_id_without_clock(self):
+        clock = FakeClock(start_ns=5_000)
+        recorder = RequestTimingRecorder(clock_ns=clock)
+        recorder.record_arrival(30, prompt_tokens=3)
+        recorder.record_arrival(10, prompt_tokens=1)
+        recorder.record_arrival(20, prompt_tokens=2)
+
+        clock_before = clock._now
+        snapshots = recorder.snapshots()
+        self.assertEqual(clock._now, clock_before)
+        self.assertEqual([record.seq_id for record in snapshots], [10, 20, 30])
+        self.assertEqual([record.prompt_tokens for record in snapshots], [1, 2, 3])
+
+    def test_early_snapshots_keep_history_and_are_immutable(self):
+        clock = FakeClock()
+        recorder = RequestTimingRecorder(clock_ns=clock)
+        recorder.record_arrival(7, prompt_tokens=4)
+
+        early = recorder.snapshots()
+        self.assertEqual(len(early), 1)
+        early_record = early[0]
+        self.assertIsNone(early_record.first_scheduled_ns)
+        self.assertIsNone(early_record.first_output_ns)
+        self.assertEqual(early_record.output_tokens, 0)
+
+        recorder.record_first_scheduled(7)
+        recorder.record_output_token(7, output_tokens=1)
+        later = recorder.snapshots()
+
+        self.assertIsNone(early_record.first_scheduled_ns)
+        self.assertIsNone(early_record.first_output_ns)
+        self.assertEqual(early_record.output_tokens, 0)
+        self.assertIsNotNone(later[0].first_scheduled_ns)
+        self.assertIsNotNone(later[0].first_output_ns)
+        self.assertEqual(later[0].output_tokens, 1)
+
+        with self.assertRaises(TypeError):
+            early[0] = later[0]
+        with self.assertRaises(FrozenInstanceError):
+            early_record.output_tokens = 99
+        self.assertEqual(early_record.output_tokens, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

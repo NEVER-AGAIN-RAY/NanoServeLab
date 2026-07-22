@@ -70,3 +70,4 @@
 - 记录独立于 KV Block 生命周期，不参与排序/准入/抢占/分配；未修改 `LLMEngine`、`Sequence`、`BlockManager`、`ModelRunner`、`Config`、`bench.py` 或调度策略。
 - 新增 `tests/test_request_timing.py`（fake monotonic clock，无 sleep）。Mac 轻量 package bootstrap 下与 lifecycle、snapshot、bench 合约测试共 15 个全部通过（绕过 `nanovllm/__init__.py` eager import；普通包导入需完整运行时依赖，当前 Mac 未安装）。`py_compile` 与 `git diff --check` 通过。未安装新依赖，未接入公开引擎开关，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论；阶段 2 未完成。
 - 审阅修订：不可变性测试改为精确断言 `FrozenInstanceError`；文档与 PR 证据改为明确写出 Mac 轻量 package bootstrap 验证方式，避免把普通 `python -m unittest` 误记为已通过。
+- 接入引擎入口：`RequestTimingRecorder.snapshots()` 按 `seq_id` 升序返回不可变 tuple；`LLMEngine` 增加 keyword-only `timing_recorder=None`，原样传给 `Scheduler`，不进入 Config。Mac bootstrap 仅验证 recorder 语义与语法（未构造真实 LLMEngine）；未做 WSL2/CUDA，未跑 benchmark，无性能结论；PR #11 保持 Draft。

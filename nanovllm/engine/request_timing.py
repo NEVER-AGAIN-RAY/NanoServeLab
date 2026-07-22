@@ -4,8 +4,9 @@
 TTFT、TPOT、E2E 或任何聚合统计。记录独立于 KV Block 生命周期：请求完成并
 释放 Block 后，snapshot 仍可读取。
 
-``RequestTimingRecorder`` 由 Scheduler 可选注入；默认关闭时 Scheduler 不
-创建记录、不调用时钟。
+``RequestTimingRecorder`` 可由调用方持有，并以 keyword-only 参数可选注入
+``LLMEngine`` / ``Scheduler``；默认关闭时不创建记录、不调用时钟。对外通过
+``get()`` 或 ``snapshots()`` 读取不可变记录，不暴露内部 dict。
 """
 
 from __future__ import annotations
@@ -41,6 +42,10 @@ class RequestTimingRecorder:
             return self._records[seq_id]
         except KeyError as exc:
             raise KeyError(f"no timing record for seq_id={seq_id}") from exc
+
+    def snapshots(self) -> tuple[RequestTimingRecord, ...]:
+        """按 ``seq_id`` 升序返回不可变记录 tuple；不调用时钟。"""
+        return tuple(self._records[seq_id] for seq_id in sorted(self._records))
 
     def record_arrival(self, seq_id: int, prompt_tokens: int) -> None:
         if seq_id in self._records:

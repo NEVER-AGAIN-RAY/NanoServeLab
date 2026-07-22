@@ -3,10 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；最小 Scheduler timing record 已在独立分支实现，尚未合并
-- 当前主线：合约已在 `main`；分支 `cursor/stage2-request-timing-core` 完成默认关闭的只读 timing record 与 fake-clock CPU 测试；尚未接入公开 LLMEngine 开关，也未做 WSL2/CUDA 验证
+- 当前阶段：阶段 2——指标与混合负载；最小 timing record + 可选 LLMEngine 接线已在独立分支实现，尚未合并
+- 当前主线：合约已在 `main`；分支 `cursor/stage2-request-timing-core` 完成默认关闭的 timing record、`snapshots()` 与 keyword-only `LLMEngine(..., timing_recorder=None)`；Mac 仅验证 recorder CPU 语义与语法；WSL2/CUDA 真实路径尚未验证
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
-- 阶段 2 状态：未完成；本切片只交付原始生命周期记录，不含指标聚合、混合 workload 或 benchmark
+- 阶段 2 状态：未完成；本切片只交付原始生命周期记录与正常引擎入口，不含指标聚合、混合 workload 或 benchmark
 
 ## 60 秒恢复流程
 
@@ -88,9 +88,9 @@
 ### 当前活动工作
 
 - [PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 已于 2026-07-22 合并到 `main`，merge commit 为 `a367963`；指标边界合约已就绪。
-- 独立分支 `cursor/stage2-request-timing-core` 已实现 Scheduler 级最小 per-request timing record：`RequestTimingRecorder` 可选注入，默认 `timing_recorder=None` 关闭；不参与调度/KV 决策，不修改 `LLMEngine`、`Sequence`、`BlockManager`、`Config` 或 `bench.py`。
-- Mac 轻量 package bootstrap 下 fake-clock CPU 测试通过：新增 `tests/test_request_timing.py`，并与既有 lifecycle、snapshot、bench 合约测试共 15 个 OK。该 bootstrap 只绕过 `nanovllm/__init__.py` 的 eager runtime import，用于 Scheduler/bench CPU 测试；普通包导入需要当前 Mac 未安装的完整 nano-vLLM 运行时依赖。未安装新依赖，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论。
-- 尚未接入公开 LLMEngine 开关；尚未进行 WSL2/CUDA 行为或 instrumentation overhead 验证；不得将本切片描述为阶段 2 已完成。
+- 独立分支 `cursor/stage2-request-timing-core`（Draft [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11)）已实现：Scheduler 级 `RequestTimingRecorder`；`snapshots()` 按 `seq_id` 升序返回不可变 tuple；`LLMEngine` / `LLM` 接受显式 keyword-only `timing_recorder=None`，同一对象原样传给 Scheduler；不进入 Config，无额外布尔开关。
+- Mac 轻量 package bootstrap 只验证 recorder / Scheduler / bench CPU 语义与 `py_compile`；未构造真实 LLMEngine/ModelRunner。未安装新依赖，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论。
+- 尚待 WSL2：真实 LLM 初始化、Prefill/Decode、EOS/`max_tokens` 边界与 instrumentation overhead；不得将本切片描述为阶段 2 已完成。
 - `docs/experiments/metrics.md` 仍是公式与事件边界的稳定合约；本切片只保存原始时间戳与 Token 计数，不计算 Queue Time、TTFT、TPOT、E2E 或 percentile。
 
 ### 环境与阻塞
@@ -106,22 +106,22 @@
 
 ### 目标名称
 
-**WSL2 timing-record behavior checklist + optional LLMEngine wiring（下一切片）**
+**WSL2 timing-record behavior checklist（转 Ready 前门控）**
 
 ### 为什么现在做
 
-最小 Scheduler timing record 已在独立分支完成 Mac fake-clock CPU 验证，且默认关闭、不改变调度/KV。下一切片才决定是否暴露公开引擎开关，以及如何在 WSL2 上核对真实 CUDA 路径上的事件边界与 instrumentation overhead；本切片不运行 benchmark。
+可选 `timing_recorder` 已接入 `LLMEngine`，且 `snapshots()` 提供可枚举不可变入口。下一切片在 WSL2 核对真实 CUDA 路径上的事件边界与 instrumentation overhead；本切片不运行 benchmark。
 
 ### 本轮要回答的问题
 
-- 是否、以及如何把 `RequestTimingRecorder` 以可选开关接到 `LLMEngine`，同时保持默认关闭；
 - WSL2 上 Arrival / First Scheduled / First Output / Completion 是否仍与合约一致；
+- `LLM(..., timing_recorder=recorder)` 真实初始化与 Prefill/Decode / EOS/`max_tokens` 路径是否正确写录；
 - instrumentation 是否引入可观察开销，以及如何诚实记录限制；
 - 何时才开始混合 workload 与派生指标聚合。
 
 ### 明确范围
 
-下一切片再决策引擎接线与 WSL2 验证；当前分支只保留最小记录层：
+引擎接线已完成（默认关闭）；WSL2 验证另开执行：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
 - 不实现混合到达 workload、JSONL、数据库、Dashboard 或可视化；
@@ -130,15 +130,15 @@
 
 ### 完成标准
 
-- Draft PR 可供审阅；默认关闭行为与既有 CPU 测试保持通过；
+- Draft PR 可供审阅；默认关闭行为与 Mac CPU 测试保持通过；
 - 明确列出尚未完成的 WSL2/CUDA 验证项；
 - 不把本切片描述为阶段 2 完成。
 
 ## 立即下一步
 
-1. 审阅并合并（或继续修订）`cursor/stage2-request-timing-core` 的 Draft PR；不得在未审阅时转 Ready。
-2. 单独切片决定是否接入公开 `LLMEngine` 开关。
-3. 在 WSL2 制定并执行真实 CUDA 行为与 instrumentation overhead 验证清单；本切片不运行 benchmark。
+1. 审阅 Draft [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11)；不得在未完成 WSL2 门控前转 Ready。
+2. 在 WSL2 制定并执行真实 CUDA 行为与 instrumentation overhead 验证清单。
+3. 通过后再决定是否合并；本切片不运行 benchmark。
 
 ## 已推迟、当前不决策
 
