@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-22（Asia/Shanghai）
 - 当前阶段：阶段 2——指标与混合负载；纯 per-request 指标派生已合并，第一版 saturated 混合 workload 已在独立分支实现
-- 当前主线：`NSL-S2-SAT-v1` 已固定 48 个短请求和 16 个长请求的长度、顺序、种子、准入边界与未来原始格式；当前不含 driver、聚合或 benchmark
+- 当前主线：项目所有者已明确接受 `NSL-S2-SAT-v1`；它固定 48 个短请求和 16 个长请求的长度、顺序、种子、准入边界与未来原始格式；当前不含 driver、聚合或 benchmark
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 状态：未完成；指标派生已交付，mixed workload 合约/manifest 尚未合并，也尚无 driver 或正式指标实验
 
@@ -98,6 +98,7 @@
 - [PR #13](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/13) 已于 2026-07-22 合并到 `main`，merge commit 为 `5e38dbc`。`derive_request_metrics(record) -> RequestMetrics` 以纯函数重算 Queue Time、TTFT、E2E 和 Mean TPOT；单 Token TPOT 为 `None`，缺失/乱序/未完成记录抛 `ValueError`；Mac 共 33 个测试通过。
 - 独立分支 `codex/stage2-saturated-workload` 新增 `research/stage2_workload.py`：固定 64 个请求，类别顺序 `[short, long, short, short] * 16`；short 为 128→32 Token（48 个），long 为 1024→256 Token（16 个）；manifest SHA-256 为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`。
 - 新增 saturated workload 合约和 3 个确定性 CPU 测试；与既有测试合计 36 个全部通过，`py_compile` 通过。未实现 driver，未运行 CUDA 或 benchmark，无性能结论；阶段 2 仍未完成。
+- 2026-07-22 项目所有者本人明确接受 `NSL-S2-SAT-v1` 的规模、3:1 比例、长度、顺序和 saturated 准入设定。`docs/experiments/saturated-workload.md` 已记录该决策的归属、每组参数决定的实验条件以及未来必须通过新 workload ID 修改的流程；这些设定不代表上游默认值、真实流量或已验证最优值。
 
 ### 环境与阻塞
 
@@ -117,13 +118,14 @@
 
 ### 为什么现在做
 
-per-request 指标派生已经合并。第一版 saturated workload 已在独立分支固定为可执行、不可变的 manifest；下一步先审阅其规模、顺序、指纹、准入与输出合约，再单独实现 driver，不把设计和真实 CUDA 实验塞进同一 PR。
+per-request 指标派生已经合并。第一版 saturated workload 已在独立分支固定为可执行、不可变的 manifest，且项目所有者已经接受其研究设计；下一步完成记录与合并，再单独实现 driver，不把设计和真实 CUDA 实验塞进同一 PR。
 
 ### 本轮要回答的问题
 
-- 48 short / 16 long、128→32 / 1024→256 与固定交错顺序是否适合作为第一版合成场景；
+- 明确记录 48 short / 16 long、128→32 / 1024→256 与固定交错顺序是项目所有者接受的第一版合成场景，而非默认值或最优值；
 - manifest 构造和 SHA-256 是否能唯一固定未来三次独立进程输入；
-- saturated admission、warmup、measurement window 和原始 schema 是否没有混入客户端在线语义。
+- saturated admission、warmup、measurement window 和原始 schema 是否没有混入客户端在线语义；
+- 未来改变规模、比例、长度、seed、采样或引擎固定项时，是否有明确的新版本与复验路径。
 
 ### 明确范围
 

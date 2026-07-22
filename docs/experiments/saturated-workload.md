@@ -46,12 +46,38 @@
 
 选择 3:1 而不是 1:1，是为了让短请求保持多数，同时用 16 个长请求持续制造 Prefill、Decode 和 KV 占用压力。固定交错顺序避免“所有短请求在前”或“所有长请求在前”成为额外变量。该比例只是第一版合成研究场景，不声称代表真实用户流量。
 
+## 决策来源、作用与以后变更
+
+2026-07-22，项目所有者本人审阅并明确接受了 `NSL-S2-SAT-v1` 的 64 请求、3:1 长短比例、两类长度、固定交错顺序和 saturated batch admission。最终研究取舍由项目所有者作出，Codex 负责实现、核对和记录。它不是 nano-vLLM 上游默认配置，也不是 benchmark 得出的最优配置。
+
+这组设定决定的是**阶段 2 第一版实验输入场景**：第一次调度所见等待队列的组成与顺序、每类请求造成的 Prefill/Decode 工作量和 KV 占用时长、同一实验 ID 下三次独立进程是否使用完全相同的输入，以及 Queue Time、TTFT、TPOT、E2E 所处的负载条件。它不决定 Scheduler 使用什么策略，不改变指标公式，也不预先决定实验结果或性能结论。
+
+| 想调整的内容 | 当前控制位置 | 它会影响什么 |
+| --- | --- | --- |
+| 实验版本身份 | `WORKLOAD_ID` | 原始结果归组；不同 ID 不能冒充同一实验的重复运行 |
+| 长短比例、总请求数与交错顺序 | `CLASS_PATTERN`、`PATTERN_REPETITIONS` | 第一次 Scheduler step 面对的竞争结构、汇总时两类请求的权重和总工作量 |
+| 两类 Prompt / Output 长度 | `SHORT_*_TOKENS`、`LONG_*_TOKENS` | Prefill 计算量、Decode 轮数、KV 占用量与单请求最长上下文 |
+| Prompt Token 的具体内容 | `WORKLOAD_SEED`、`MAX_TOKEN_ID` | 64 个 Prompt 的精确 manifest 与 SHA-256；不改变固定长度本身 |
+| 生成采样 | 本文“模型、采样与引擎固定项”中的 Sampling seed、temperature、`ignore_eos` | 生成 Token 选择和实际输出长度是否固定 |
+| 准入模型 | 本文“Saturated admission 的精确定义”，由后续 driver 实现 | 第一次调度是否看到完整等待队列，以及 arrival/queue 指标的解释边界 |
+| 引擎容量参数 | 本文“模型、采样与引擎固定项”，由后续 driver 固定 | 每步批处理容量、可并发序列数、KV 容量和实验可比条件 |
+
+以后若要改参数，不覆盖或悄悄重定义已经冻结的 `NSL-S2-SAT-v1`，按以下步骤建立新版本（例如 `NSL-S2-SAT-v2`）：
+
+1. 先写明只改变哪个研究变量以及为什么，其他变量保持不变；
+2. 使用新的 `WORKLOAD_ID`，再修改上表对应的常量或 driver 固定项；出现第二个 workload 版本时再复制或抽取版本化定义，不提前搭建大型配置框架；
+3. 重新计算请求数量、Prompt / Output 总量、最大上下文和规范 manifest SHA-256，并更新对应 CPU 测试与该新版本文档；
+4. driver 的原始 JSON 必须写入新的 workload ID、完整参数和新指纹，旧版原始结果保持只读；
+5. 重新完成 Mac 合约测试和 WSL2 三次独立进程实验；不同 workload ID 的结果只能作为不同实验条件比较，不能混入同一组重复统计。
+
+因此，未来最安全的修改入口是先改实验版本与对应参数，再让测试和指纹暴露所有连带变化；不能只把旧文档中的预期指纹改成新值来迁就意外变化。
+
 ## Token 构造与指纹
 
 实现位于 `research/stage2_workload.py`：
 
 1. 使用局部 `random.Random(0)`，不读取或修改进程全局 Python RNG；
-2. 类别顺序固定为 `[short, long, short, short] * 16`；
+2. 类别顺序由 `CLASS_PATTERN * PATTERN_REPETITIONS` 固定为 `[short, long, short, short] * 16`；
 3. 不随机生成长度；每个请求按其固定 Prompt 长度顺序调用 `randint(0, 10000)`；
 4. Output Token 数只来自请求类别，不消耗 workload RNG；
 5. 返回不可变 `tuple[SaturatedRequest, ...]`，每个请求和 Prompt Token 序列也不可变。

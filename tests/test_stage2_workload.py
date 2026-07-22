@@ -10,6 +10,7 @@ from research.stage2_workload import (
     LONG_PROMPT_TOKENS,
     LONG_REQUESTS,
     MAX_TOKEN_ID,
+    PATTERN_REPETITIONS,
     REQUEST_COUNT,
     SHORT_OUTPUT_TOKENS,
     SHORT_PROMPT_TOKENS,
@@ -24,9 +25,13 @@ class Stage2SaturatedWorkloadTest(unittest.TestCase):
     def test_exact_counts_and_interleaved_order(self):
         requests = build_saturated_mixed_workload()
 
+        self.assertEqual(
+            (SHORT_REQUESTS, LONG_REQUESTS, REQUEST_COUNT),
+            (48, 16, 64),
+        )
         self.assertEqual(len(requests), REQUEST_COUNT)
         classes = tuple(request.request_class for request in requests)
-        self.assertEqual(classes, CLASS_PATTERN * 16)
+        self.assertEqual(classes, CLASS_PATTERN * PATTERN_REPETITIONS)
         self.assertEqual(classes.count("short"), SHORT_REQUESTS)
         self.assertEqual(classes.count("long"), LONG_REQUESTS)
         self.assertEqual(

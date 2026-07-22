@@ -20,14 +20,15 @@ RequestClass = Literal["short", "long"]
 WORKLOAD_ID = "NSL-S2-SAT-v1"
 WORKLOAD_SEED = 0
 MAX_TOKEN_ID = 10_000
-SHORT_REQUESTS = 48
-LONG_REQUESTS = 16
+CLASS_PATTERN: tuple[RequestClass, ...] = ("short", "long", "short", "short")
+PATTERN_REPETITIONS = 16
+SHORT_REQUESTS = CLASS_PATTERN.count("short") * PATTERN_REPETITIONS
+LONG_REQUESTS = CLASS_PATTERN.count("long") * PATTERN_REPETITIONS
 REQUEST_COUNT = SHORT_REQUESTS + LONG_REQUESTS
 SHORT_PROMPT_TOKENS = 128
 SHORT_OUTPUT_TOKENS = 32
 LONG_PROMPT_TOKENS = 1_024
 LONG_OUTPUT_TOKENS = 256
-CLASS_PATTERN: tuple[RequestClass, ...] = ("short", "long", "short", "short")
 EXPECTED_MANIFEST_SHA256 = (
     "aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d"
 )
@@ -46,7 +47,7 @@ class SaturatedRequest:
 def build_saturated_mixed_workload() -> tuple[SaturatedRequest, ...]:
     """Return the exact ``NSL-S2-SAT-v1`` request order and token contents."""
     rng = random.Random(WORKLOAD_SEED)
-    request_classes = CLASS_PATTERN * 16
+    request_classes = CLASS_PATTERN * PATTERN_REPETITIONS
     requests = []
     for request_index, request_class in enumerate(request_classes):
         if request_class == "short":
