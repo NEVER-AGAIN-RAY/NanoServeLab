@@ -71,3 +71,10 @@
 - 新增 `tests/test_request_timing.py`（fake monotonic clock，无 sleep）。Mac 轻量 package bootstrap 下与 lifecycle、snapshot、bench 合约测试共 15 个全部通过（绕过 `nanovllm/__init__.py` eager import；普通包导入需完整运行时依赖，当前 Mac 未安装）。`py_compile` 与 `git diff --check` 通过。未安装新依赖，未接入公开引擎开关，未做 WSL2/CUDA 验证，未运行 benchmark，无性能结论；阶段 2 未完成。
 - 审阅修订：不可变性测试改为精确断言 `FrozenInstanceError`；文档与 PR 证据改为明确写出 Mac 轻量 package bootstrap 验证方式，避免把普通 `python -m unittest` 误记为已通过。
 - 接入引擎入口：`RequestTimingRecorder.snapshots()` 按 `seq_id` 升序返回不可变 tuple；`LLMEngine` 增加 keyword-only `timing_recorder=None`，原样传给 `Scheduler`，不进入 Config。Mac bootstrap 仅验证 recorder 语义与语法（未构造真实 LLMEngine）；未做 WSL2/CUDA，未跑 benchmark，无性能结论；PR #11 保持 Draft。
+- 完成 Draft PR #11 精确提交 `e0914e23247fe731d6ee1cabce91a1e30c9725bc` 的 WSL2/CUDA 验收。WSL 直连 GitHub fetch 仍未成功，改用 SHA-256 已校验的最小 Git bundle 同步到独立分支 `codex/wsl-pr11-validation`；没有改动旧 baseline 分支或安装依赖。
+- 环境复核为 Ubuntu 24.04、Python 3.12.3、PyTorch 2.4.0+cu124、CUDA 12.4、RTX 4060 Laptop GPU 与驱动 555.97；Qwen3-0.6B revision 仍为 `c1899de289a04d12100db370d81485cdf75e47ca`。完整 18 项单元测试通过。
+- 真实 `LLM(..., timing_recorder=recorder)`、CUDA Graph、Prefill/Decode、单/多 Token 和 `max_tokens` 路径通过；recorder-on 的四个时间事件齐全单调，recorder-off 不产生记录，两个独立进程输出 Token 哈希一致。
+- 通过“真实 CUDA 探测首 Token，再在独立进程将相同 Token 作为 EOS 判断哨兵”的方法覆盖 EOS 完成分支：`max_tokens=8` 的请求在第 1 Token 后完成。该结果明确标为受控 EOS，不冒充模型自然生成 tokenizer EOS。
+- 完成 3 次 recorder-on 与 3 次 recorder-off 全新进程冒烟。六次输出 Token 哈希一致；on/off measured elapsed 的样本均值分别为 780.764324 ms 和 815.489169 ms，但成对差值方向不一致且样本标准差约 60–66 ms，只能说明未观察到一致的异常级退化，不构成 recorder 加速、零开销或正式性能结论。
+- 10 份 schema v1 原始 JSON 与验收 runner 已保留在 WSL，并备份到 Mac 的 Git 忽略目录；双端逐文件 SHA-256 一致。完整协议、原始值、哈希、解释边界和限制记录在 `docs/experiments/timing-validation-2026-07-22.md`。
+- PR #11 的 WSL2/CUDA 行为门槛已满足，但阶段 2 仍未完成；下一实现目标切换为纯 per-request 指标派生，用确定性 CPU 测试固定 Queue Time、TTFT、E2E、TPOT 和无效/空值规则，不同时实现混合 workload 或聚合框架。
