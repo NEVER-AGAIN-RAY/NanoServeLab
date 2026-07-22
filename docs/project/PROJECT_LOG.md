@@ -50,6 +50,11 @@
 - 三份原始 JSON 已从 WSL 备份到 Mac 的 Git 忽略目录，逐文件 SHA-256 完全一致；另记录模型权重 SHA-256 和固定 workload 规范化指纹。完整证据链、命令、逐次数据、统计方法、限制与后续使用规则写入 `docs/experiments/baseline-results-2026-07-21.md`。
 - 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都成功完成；本轮没有修改 cache limit。stdout/stderr 未单独归档、运行期间未连续采集热状态等限制已如实记录。
 - 阶段 1 的正式退出条件已经满足；唯一下一实现目标切换为阶段 2 指标边界合约，先定义 TTFT、TPOT、E2E 与 Queue Time 的生命周期事件、公式和 CPU 可测不变量，不提前改变调度策略或运行新 benchmark。
+- 完成阶段 2 指标事件的定向源码映射：请求在 Tokenize 后进入 Scheduler，首次 Chunked Prefill 即算 First Scheduled；只有 `Scheduler.postprocess()` 越过未完成 Prompt 的丢弃分支并调用 `Sequence.append_token()` 才算真实 First Output；完成发生在最后 Token 追加后、KV Block 释放前。
+- 新增 `docs/experiments/metrics.md`，固定 Initial Scheduler Queue Time、引擎侧 TTFT、Mean TPOT、E2E 与未来 throughput window；选择可注入 `time.perf_counter_ns()`、write-once timestamp、单 Token TPOT 为 `null`、nearest-rank percentile 和原始记录优先的规则。
+- 明确当前 `LLM.generate()` 只在全部请求完成后同步返回，不能报告客户端流式 TTFT；当前引擎也没有 cancel/failed 状态。阶段 2 合约没有新增运行时代码、没有运行 benchmark，真实 CUDA 边界与 instrumentation overhead 仍需未来 WSL2 验证。
+- 唯一下一实现目标切换为最小 per-request timing record 与 fake-clock CPU 测试；指标合约分支基于未合并的 PR #7 head，以 stacked change 保持与 baseline PR 隔离。
+- 创建 [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 提交指标边界合约，base 暂为 `codex/reproducible-baseline-contract`；PR #7 合并后必须 rebase/retarget 到最新 `main`，本轮不转 Ready、不合并。
 
 ## 2026-07-22
 
@@ -57,3 +62,4 @@
 - 重新核对 Mac 留存的三份 schema v1 原始 JSON：实验配置、source commit、模型 revision、workload 规模与 seed 一致，逐文件 SHA-256 与实验记录相符，均值 1014.433126 和样本标准差 4.212859 可由原始值重算得到。
 - [PR #7](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/7) 转为 Ready 后合并，merge commit 为 `22be4f9c442e2aacfb16682220801416845ce992`。至此阶段 1 的代码、测试、CUDA 实验、原始数据备份、统计与书面记录全部交付；没有据此声称性能提升。
 - [Draft PR #8](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/8) 的 base 已从阶段 1 分支调整为 `main`，继续仅承载阶段 2 指标边界合约；它保持 Draft，不在阶段 1 收尾中合并。
+- 项目所有者确认阶段 2 第一版混合负载采用 saturated arrival：warmup 后，全部 measured 请求在第一次 Scheduler step 前完成准入，以固定完整混合等待队列。该场景不称为固定速率、Poisson 或真实客户端在线到达；长短请求的精确长度、比例和总数另行冻结。
