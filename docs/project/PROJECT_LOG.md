@@ -110,3 +110,9 @@
 - 证据目录已从 WSL 备份到 Mac Git 忽略目录，两端按 `SHA256SUMS` 逐文件验证通过；清单自身 SHA-256 为 `f64d4f4e09851354ad94cdfeb9ca79fb4bdac9a7fc09854163a4e3c16738921d`。
 - preflight helper 名、run 1 快速审计字段形状和 postflight 展示计数各出现一次验证命令错误；原失败日志与纠正日志均保留，均未触发实验重跑或 raw 覆盖。完整事实见 `docs/experiments/saturated-results-2026-07-23.md`。
 - 正式 raw 门槛已完成；尚未 aggregation、未发布延迟/吞吐统计、无性能提升结论。唯一下一目标切换为离线 schema v1 aggregation 小切片。
+- 独立分支 `cursor/stage2-offline-aggregation`（基于精确 `origin/main` `16d4f12b9b799bfbd8fcf23cf6fc35660e4f94bf`）实现离线 schema v1 aggregation：新增 `docs/experiments/aggregation.md`、`research/stage2_aggregate.py`、`tests/test_stage2_aggregate.py`。
+- 汇总器只读显式 raw 路径，复用 `RequestTimingRecord` 与 `derive_request_metrics()`；拒绝 dirty/malformed/混组/重复源；保留 outcome 与 invalid 计数；输出 all/short/long 延迟统计与 per-run / across-runs 吞吐；默认拒绝覆盖输出。
+- Mac 轻量 package bootstrap 共 60 个测试通过（其中 aggregation 13 个）；`py_compile`、CLI `--help`、fresh import 不加载 torch、`git diff --check` 通过。未改 scheduler / recorder / driver / `bench.py` / workload；未在正式 raw 上运行 aggregation；未发布统计数字；无性能结论。
+- 独立对抗审查发现 Cursor 初版会给 failed / 缺失 status 的 run 计算吞吐、用 `int()` 接受或截断 bool/string/float、弱化错误容器、漏收未知 request class、让非法 UTF-8 等异常逃出 CLI，并以 `exists()` + `write_text()` 留下覆盖竞态。上述问题均在本分支修复，未触碰正式 raw。
+- 修复后 loader 严格要求 schema/status/container/integer，单源也必须匹配冻结 `NSL-S2-SAT-v1` workload 与 manifest；finished record 校验 short/long、Token 一致性和时间事实；failed run 吞吐强制为 null；同一份源 bytes 同时用于解析和 SHA-256；输出以独占创建拒绝文件、符号链接和并发覆盖，并拒绝非有限 JSON。
+- 新增对抗性回归后 aggregation 21 tests、Mac 全套轻量 package bootstrap 68 tests 全部通过；静态门槛复验结果见本分支最终审查记录。仍未在正式 raw 上运行 aggregation，未发布任何正式延迟/吞吐统计。

@@ -246,4 +246,4 @@ schema v1 顶层字段：
 
 driver、smoke 与三次正式运行门槛均已完成。正式 run 1、2、3 在精确 `main` `69c88c252e09bd5d4ffad434c525647d9bf4f207` 上由三个全新 Python 进程串行完成；三份 schema v1 raw、完整日志、独立标准库审计与 WSL/Mac 双端 SHA-256 备份见 [`saturated-results-2026-07-23.md`](saturated-results-2026-07-23.md)。
 
-aggregation 仍未实现，也没有性能结论。下一门槛是离线 schema v1 aggregation 小切片：只读取已验证 raw 并复用已合并的纯 per-request 指标派生，不修改 Scheduler、driver、`bench.py` 或冻结 workload。
+离线 schema v1 aggregation 合约与实现位于 [`aggregation.md`](aggregation.md) / `research/stage2_aggregate.py`；独立分支已通过 Mac 对抗审查，待提交与 PR。本切片未在正式 raw 上运行汇总，也没有性能结论。下一门槛是提交并合并 aggregation 后，再对三份正式 raw 做只读汇总。
