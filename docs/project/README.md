@@ -3,10 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-23（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；saturated admission driver（Draft PR #17）已完成 Mac 与 WSL2/CUDA smoke，尚未合并
-- 当前主线：审查并合并 [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)；合并后才启动三次全新进程正式 `NSL-S2-SAT-v1` 实验；aggregation 仍推迟
+- 当前阶段：阶段 2——指标与混合负载；saturated admission driver（PR #17）已合并到 `main`，尚无正式三次实验
+- 当前主线：在合并后的精确 `main` 上，用三个全新 Python 进程运行正式 `NSL-S2-SAT-v1`，逐次保存 raw JSON 和完整日志；aggregation 仍推迟
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
-- 阶段 2 状态：未完成；driver CUDA smoke 已通过，尚无正式三次实验或指标聚合
+- 阶段 2 状态：未完成；driver 与 smoke 已交付，尚无正式三次实验或指标聚合
 
 ## 60 秒恢复流程
 
@@ -45,7 +45,7 @@
 
 ### 仓库基线
 
-- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试、结构化 Step Snapshot、阶段 1 baseline、阶段 2 指标合约、request timing 记录层、纯 per-request 指标派生和 `NSL-S2-SAT-v1` workload；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
+- `main` 已包含项目导航、中文核心模块导读、Scheduler 生命周期测试、结构化 Step Snapshot、阶段 1 baseline、阶段 2 指标合约、request timing 记录层、纯 per-request 指标派生、`NSL-S2-SAT-v1` workload，以及 saturated admission driver 与 schema v1 writer；精确 SHA 应通过实时 Git 检查获取，避免状态文档在自身提交后立即过时。
 - 上游基线：`GeeeekExplorer/nano-vllm` 的 `bb823b3`
 - `origin` 是 `NEVER-AGAIN-RAY/NanoServeLab`；`upstream` 只用于跟踪官方仓库，禁止推送。
 - 根目录 `README.md` 保留上游 nano-vLLM 说明；NanoServeLab 自有状态、实验与环境文档分别放在 `docs/project/`、`docs/experiments/` 与 `environment/`。
@@ -79,6 +79,7 @@
 | 阶段 2 request timing 记录层 | 已合并 | [PR #11](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/11)，merge `5f72b60` | 默认关闭的原始事件记录；Mac CPU 与 WSL2/CUDA 行为门槛均通过 |
 | 阶段 2 per-request 指标派生 | 已合并 | [PR #13](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/13)，merge `5e38dbc` | 纯函数重算 Queue Time、TTFT、E2E、Mean TPOT；33 个 Mac 测试通过 |
 | 阶段 2 saturated 混合 workload | 已合并 | [PR #14](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/14)，merge `888aef1` | 所有者确认的 `NSL-S2-SAT-v1` 合约、不可变 manifest 与指纹；36 个 Mac 测试通过 |
+| 阶段 2 saturated admission driver | 已合并 | [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)，merge `f4daf0e` | schema v1 writer、Mac 47 tests、WSL2/CUDA smoke；尚无正式三次实验 |
 
 ### 阶段 1 最终交付
 
@@ -101,10 +102,10 @@
 - [PR #14](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/14) 已于 2026-07-22 合并到 `main`，merge commit 为 `888aef1`。`research/stage2_workload.py` 固定 64 个请求，类别顺序 `[short, long, short, short] * 16`；short 为 128→32 Token（48 个），long 为 1024→256 Token（16 个）；manifest SHA-256 为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`。
 - saturated workload 合约和 3 个确定性 CPU 测试已进入主线；与既有测试合计 36 个全部通过，`py_compile`、指纹重算与 `git diff --check` 通过。未运行 CUDA 或 benchmark，无性能结论。
 - 2026-07-22 项目所有者本人明确接受 `NSL-S2-SAT-v1` 的规模、3:1 比例、长度、顺序和 saturated 准入设定。`docs/experiments/saturated-workload.md` 已记录该决策的归属、每组参数决定的实验条件以及未来必须通过新 workload ID 修改的流程；这些设定不代表上游默认值、真实流量或已验证最优值。
-- 独立分支 `cursor/stage2-saturated-driver` 新增 `research/stage2_saturated_driver.py`：固定 warmup（`"Benchmark: "` + 显式 sampling）、64 次 measured `add_request` 全部先于第一次 `step`、recorder snapshot diff 建立 `request_index↔seq_id`、schema v1 原始 JSON（成功/失败均尽量落盘）。未改 `nanovllm` 核心、`bench.py` 或冻结 manifest。
-- 审查修订：runtime setup 失败也写唯一 failed artifact；保留 `unmapped_timing_records`；成功终态不变量在末端 sync 前校验；`cuda_synchronized` 仅真实 CUDA 双边界同步成功时为 true；manifest mismatch 保存实际 digest；torch 隔离改为 fresh subprocess。
+- [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 已于 2026-07-23 合并到 `main`，merge commit 为 `f4daf0e55ad213093b215fc4fd713b546951609c`。交付 `research/stage2_saturated_driver.py`：固定 warmup、64 次 measured `add_request` 全部先于第一次 `step`、recorder snapshot diff 建立 `request_index↔seq_id`、schema v1 原始 JSON（成功/失败均尽量落盘）。未改 `nanovllm` 核心、`bench.py` 或冻结 manifest。
 - Mac 轻量 package bootstrap：driver 与既有测试共 47 个全部通过；`py_compile`、CLI `--help`、fresh subprocess import 不加载 torch、manifest 指纹重算与 `git diff --check` 通过。
-- Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 精确提交 `59d4d9a5bc2c550097e77d24b8f75aff6e335454` 的 WSL2/CUDA smoke 已通过：47 个测试 OK，一次真实 LLM smoke `status=finished`，`cuda_synchronized=true`，`max(arrival_ns) <= min(first_scheduled_ns)` 证明 saturated admission；原始 JSON / 哈希 / 双端备份见 [`docs/experiments/saturated-smoke-validation-2026-07-23.md`](../experiments/saturated-smoke-validation-2026-07-23.md)。该 smoke 不是正式三次实验，无性能结论。PR 仍保持 Draft，等待本次证据文档审查。
+- WSL2/CUDA smoke 源码仍是精确提交 `59d4d9a5bc2c550097e77d24b8f75aff6e335454`（smoke 时 PR #17 为 Draft，属历史事实）：47 个测试 OK，一次真实 LLM smoke `status=finished`，`cuda_synchronized=true`，`max(arrival_ns) <= min(first_scheduled_ns)` 证明 saturated admission；原始 JSON / 哈希 / 双端备份见 [`docs/experiments/saturated-smoke-validation-2026-07-23.md`](../experiments/saturated-smoke-validation-2026-07-23.md)。该 smoke 不是正式三次实验，无性能结论；不声称已在 merge commit `f4daf0e` 上跑过模型。
+- 阶段 2 仍未完成：尚未在合并后的精确 `main` 上运行三次正式 `NSL-S2-SAT-v1`，也没有 aggregation 或性能结论。
 
 ### 环境与阻塞
 
@@ -115,27 +116,27 @@
 - 三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都正常完成；本轮没有为了改善数字而改变 cache limit。运行期间未连续记录温度、功耗或时钟，stdout/stderr 也未单独归档，这些限制已写入正式实验记录。
 - WSL 直连 GitHub fetch 曾在 2026-07-22 及更早轮次失败，当时用 Mac 生成的最小 Git bundle 同步 PR #11 精确提交；**2026-07-23 PR #17 smoke 轮次 WSL 直连 GitHub fetch 已成功**，不再需要 bundle。此前失败事实保留为历史，不表示当前仍阻塞。
 - Mac 的 GitHub 连接已于 2026-07-22 修复并复验：删除未监听的 `127.0.0.1:7897` 全局 Git 代理后，Git HTTPS 与 `gh` 恢复；`ChatGPT Codex Connector` 已安装到 `NEVER-AGAIN-RAY` 且仅授权 NanoServeLab，连接器仓库与 PR 读取通过。完整根因与恢复规则见 `environment/mac.md`。
-- 当前有可复现的参考 baseline、通过真实 CUDA 路径的原始 timing 记录层、已冻结的阶段 2 混合 workload，以及 Draft PR #17 已通过的 saturated driver WSL2/CUDA smoke；尚无正式三次 `NSL-S2-SAT-v1` 实验或指标聚合，也没有性能提升结论。
+- 当前有可复现的参考 baseline、通过真实 CUDA 路径的原始 timing 记录层、已冻结的阶段 2 混合 workload，以及已合并的 saturated admission driver（Mac 47 tests + WSL2/CUDA smoke）；尚无正式三次 `NSL-S2-SAT-v1` 实验或指标聚合，也没有性能提升结论。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**审查并合并 Draft PR #17；合并后启动三次全新进程正式 NSL-S2-SAT-v1 实验**
+**在合并后的精确 main 上，用三个全新 Python 进程运行正式 NSL-S2-SAT-v1**
 
 ### 为什么现在做
 
-driver、schema v1 writer、Mac 47 tests 与真实 CUDA smoke 门槛均已满足。下一步只审阅证据文档与实现，再合并 PR；合并后才用三个全新 Python 进程跑正式实验。aggregation 仍推迟到三份正式 raw JSON 验证之后。
+PR #17 已于 2026-07-23 合并（merge `f4daf0e`）。saturated driver、schema v1 writer、Mac 47 tests 与真实 CUDA smoke 门槛均已交付。唯一下一步是在合并后的精确 `main` 上，用三个全新 Python 进程跑正式实验，逐次保存 raw JSON 与完整日志。三次实验前必须重新核对 Git clean、环境、模型 revision、manifest 与 GPU 空闲；任一次失败都必须保留，不能用重跑替换。aggregation 仍推迟到三份正式 raw JSON 独立验证和双端备份之后。不声称性能提升。
 
 ### 本轮要回答的问题
 
-- Draft 证据文档与实现是否足以合并 PR #17；
 - 合并后三次独立进程原始 JSON 是否齐全、指纹一致；
-- 三份正式 raw 验证通过后，才决定是否进入聚合切片。
+- 任一次失败是否已原样保留；
+- 三份正式 raw 验证与双端备份通过后，才决定是否进入聚合切片。
 
 ### 明确范围
 
-本门槛只覆盖审查 / 合并与随后的正式三次实验准备：
+本门槛只覆盖正式三次实验：
 
 - 不修改调度策略、优先级、KV Cache 分配或 Prefix Cache 行为；
 - 不修改阶段 1 `bench.py`；
@@ -145,14 +146,14 @@ driver、schema v1 writer、Mac 47 tests 与真实 CUDA smoke 门槛均已满足
 
 ### 完成标准
 
-- PR #17 经审查后合并到 `main`；
-- 合并后在 WSL2 用三个全新 Python 进程完成正式 `NSL-S2-SAT-v1` 并保存原始 JSON；
-- 在三份正式 raw 验证前不进入 aggregation，不声称性能结果。
+- 在合并后的精确 `main` 上，用三个全新 Python 进程完成正式 `NSL-S2-SAT-v1` 并逐次保存 raw JSON 与完整日志；
+- 在三份正式 raw 独立验证和双端备份前不进入 aggregation，不声称性能结果。
 
 ## 立即下一步
 
-1. 审查 Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 的实现与 [`docs/experiments/saturated-smoke-validation-2026-07-23.md`](../experiments/saturated-smoke-validation-2026-07-23.md) 证据。
-2. 合并后再启动三次全新进程正式实验；aggregation 仍在其后。
+1. 在合并后的精确 `main` 上重新核对 Git clean、环境、模型 revision、manifest 与 GPU 空闲。
+2. 用三个全新 Python 进程串行运行正式 `NSL-S2-SAT-v1`，逐次保存 raw JSON 与完整日志；任一次失败原样保留，不能用重跑替换。
+3. aggregation 仍推迟到三份正式 raw 独立验证和双端备份之后。
 
 ## 已推迟、当前不决策
 
@@ -162,4 +163,4 @@ driver、schema v1 writer、Mac 47 tests 与真实 CUDA smoke 门槛均已满足
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在 PR #17 合并且正式三次 raw JSON 验证完成后再分别决策，当前不提前实现。
+这些问题在正式三次 raw JSON 验证完成后再分别决策，当前不提前实现。

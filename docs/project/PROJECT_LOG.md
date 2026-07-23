@@ -98,3 +98,8 @@
 - recorder 证明 saturated admission：`max(arrival_ns)=15213159684880 <= min(first_scheduled_ns)=15213160050903`。
 - raw JSON `saturated-20260722T161450.289961Z-run1.json`（29,126 Bytes，SHA-256 `0a61e1defd4532eaef37f0eca8b48df235d364fc5fc5d87bddfc647614f81e90`）与日志/审计脚本双端备份；完整事实见 `docs/experiments/saturated-smoke-validation-2026-07-23.md`。不计入正式三次实验，无性能结论。
 - 下一门槛改为审查并合并 PR #17；合并后才启动三个全新进程正式 `NSL-S2-SAT-v1` 实验；aggregation 仍推迟。
+- PR #17 完整实现与 smoke 证据审查通过；smoke 文档提交为 `96783e452be3f5ec2f85f137491a7ffd99193045`。
+- PR 转 Ready 时 GitHub 状态 CLEAN，无评论、review 或 CI check。
+- [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 以 merge commit `f4daf0e55ad213093b215fc4fd713b546951609c` 合并到 `main`；saturated admission driver 切片正式进入 `main`。
+- 没有运行三次正式实验，没有 aggregation，没有性能结论。
+- 唯一下一目标为三次全新进程正式 `NSL-S2-SAT-v1`。

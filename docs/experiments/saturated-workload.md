@@ -235,11 +235,13 @@ schema v1 顶层字段：
 
 ## 当前交付与下一门槛
 
+[PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 已于 2026-07-23 合并到 `main`，merge commit 为 `f4daf0e55ad213093b215fc4fd713b546951609c`。
+
 本切片已交付：
 
 - 固定 workload 合约与不可变 manifest builder；
-- saturated admission driver 与 schema v1 writer（`research/stage2_saturated_driver.py`，Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)）；
+- saturated admission driver 与 schema v1 writer（`research/stage2_saturated_driver.py`）；
 - CPU fake-engine 测试与 Mac 轻量 bootstrap（47 tests）；
-- WSL2/CUDA smoke：精确提交 `59d4d9a` 一次真实 LLM 完整运行通过；证据见 [`saturated-smoke-validation-2026-07-23.md`](saturated-smoke-validation-2026-07-23.md)。该 smoke 不是正式 benchmark，不计入未来三次正式实验。
+- WSL2/CUDA smoke：精确提交 `59d4d9a` 一次真实 LLM 完整运行通过；证据见 [`saturated-smoke-validation-2026-07-23.md`](saturated-smoke-validation-2026-07-23.md)。该 smoke 不是正式 benchmark，不计入正式 `n=3`。
 
-下一门槛是审查并合并 PR #17。合并后，三次正式 `NSL-S2-SAT-v1` 实验必须使用三个全新 Python 进程并各自保存原始 JSON；aggregation 仍未实现，须等三份正式 raw 验证之后再决策。
+driver 与 smoke 门槛已完成。下一门槛为三次全新进程正式 `NSL-S2-SAT-v1` 实验：每次必须使用独立结果目录或不会覆盖旧文件的命名，并保存完整 stdout/stderr 与 schema v1 raw JSON。aggregation 仍未实现，须等三份正式 raw 验证之后再决策。
