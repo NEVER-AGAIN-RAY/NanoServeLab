@@ -28,7 +28,9 @@
 
 ## 仓库与模型
 
-- WSL 仓库当前最新验证位于独立分支 `codex/wsl-pr17-smoke`，HEAD 为 Draft PR #17 的 `59d4d9a5bc2c550097e77d24b8f75aff6e335454`，tracked worktree clean。
+- [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 已合并到 `main`，merge commit 为 `f4daf0e55ad213093b215fc4fd713b546951609c`。
+- 最近一次真实 CUDA 验证仍是 source commit `59d4d9a5bc2c550097e77d24b8f75aff6e335454`（当时 WSL 验证分支 `codex/wsl-pr17-smoke`，tracked worktree clean）。不能误写成已经在 `f4daf0e` 上运行过模型。
+- 下一次正式实验会先同步到届时精确 `main`，并重新做 preflight。
 - 此前 PR #11 验证曾使用分支 `codex/wsl-pr11-validation` / `e0914e23247fe731d6ee1cabce91a1e30c9725bc`；正式 baseline 源码 commit 仍为 `fb94f6b46213174718c2c89d11c86180712f3b53`。旧验证分支与 baseline 本地提交未被改写。
 - 模型：`Qwen/Qwen3-0.6B`；`model.safetensors` 为 1,503,300,328 Bytes，SHA-256 为 `f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b`。
 - 10 个 Hugging Face 下载 metadata 文件一致记录 revision `c1899de289a04d12100db370d81485cdf75e47ca`。

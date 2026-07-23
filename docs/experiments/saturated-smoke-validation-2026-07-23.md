@@ -143,3 +143,9 @@
 - smoke 只证明当前精确提交在该 WSL2/CUDA 环境中能够按冻结合约完整运行并生成有效原始 JSON。
 
 下一门槛是审查并合并 Draft PR #17；合并后才启动三个全新 Python 进程的正式 `NSL-S2-SAT-v1` 实验。aggregation 仍推迟到三份正式 raw JSON 验证之后。
+
+## 后续交付状态
+
+- 本文记录的 smoke 发生时 PR #17 为 Draft，这是历史事实。
+- 证据审查后，PR #17 于 2026-07-23 合并；merge commit 为 `f4daf0e55ad213093b215fc4fd713b546951609c`。
+- 该后续状态不改变 smoke 的 source commit、raw JSON、哈希或限制。
