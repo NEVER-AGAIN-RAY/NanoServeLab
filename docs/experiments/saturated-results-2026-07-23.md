@@ -107,3 +107,7 @@ f64d4f4e09851354ad94cdfeb9ca79fb4bdac9a7fc09854163a4e3c16738921d
 - 按 `docs/experiments/metrics.md` 固定 outcome/invalid 计数、吞吐窗口、sample SD 与 nearest-rank P50/P95/P99；
 - 用确定性 CPU fixture 测试单 run 与三 run 汇总、空值、小样本和拒绝混组；
 - 在聚合实现与测试审查通过前，不发布性能数字或结论。
+
+## 后续完成
+
+上述门槛随后由 [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20) 的 `NSL-S2-AGG-v1` 完成并以 merge commit `a8c2efc0f14901b462a346354c134f3642b448a3` 进入 `main`。三份 raw 的正式只读汇总、独立复算、派生证据哈希、完整统计与限制见 [`saturated-aggregation-results-2026-07-23.md`](saturated-aggregation-results-2026-07-23.md)；原始 JSON 未被回填或修改。
