@@ -117,7 +117,7 @@
 - [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20) 在 68 tests 与正式 raw 哈希复验后以 merge commit `a8c2efc0f14901b462a346354c134f3642b448a3` 合并；未修改 Scheduler、driver、`bench.py` 或冻结 workload。
 - 三份正式 raw 已从合并后的 `NSL-S2-AGG-v1` 只读汇总：192/192 valid finished、0 invalid、0 unmapped；三次 Output Token/s 为 826.406070、864.999913、864.296016，mean ± sample SD 为 851.900666 ± 22.081773。完整延迟、分位数与限制见 [`saturated-aggregation-results-2026-07-23.md`](../experiments/saturated-aggregation-results-2026-07-23.md)。
 - 标准库逐字段独立复算、相同创建时间重放、拒绝覆盖、raw/aggregate 哈希回验全部通过；aggregate SHA-256 为 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。阶段 2 技术退出标准已满足，等待结果记录和最终状态收口进入 `main`。
-- 正式结果、完整统计、两次命令纠正与结论边界已进入 Draft [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)；该 PR 只含 4 个结果范围文档，不提交 Git 忽略证据。
+- 正式结果、完整统计、两次命令纠正与结论边界已进入 Draft [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)；该 PR 只含 5 个结果/状态范围文档，不提交 Git 忽略证据。
 
 ### 环境与阻塞
 
