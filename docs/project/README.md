@@ -120,6 +120,7 @@
 - 三份正式 raw 已从合并后的 `NSL-S2-AGG-v1` 只读汇总：192/192 valid finished、0 invalid、0 unmapped；三次 Output Token/s 为 826.406070、864.999913、864.296016，mean ± sample SD 为 851.900666 ± 22.081773。完整延迟、分位数与限制见 [`saturated-aggregation-results-2026-07-23.md`](../experiments/saturated-aggregation-results-2026-07-23.md)。
 - 标准库逐字段独立复算、相同创建时间重放、拒绝覆盖、raw/aggregate 哈希回验全部通过；aggregate SHA-256 为 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。
 - 正式结果、完整统计、两次命令纠正与结论边界已由 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21) 以 merge commit `77160a7422dca27a763eb44308bb20c11b91a967` 合并。阶段 2 没有剩余代码、实验或结果文档交付项。
+- 阶段 2 完成状态与阶段 3 唯一下一目标由 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22) 收口；该收口只改状态文档，不实现调度策略。
 
 ### 环境与阻塞
 

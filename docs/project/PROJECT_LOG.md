@@ -126,3 +126,4 @@
 - PR #21 最终为 5 个结果/状态文档；原始证据 26 项、aggregation 证据 2 项、文档对封存 JSON 的逐表一致性均复验通过。远端无评论/review/check 且为 `MERGEABLE` 后转 Ready，以 merge commit `77160a7422dca27a763eb44308bb20c11b91a967` 合并。
 - 阶段 2 至此满足章程退出标准：指标边界及真实 CUDA 事件路径已验证；冻结长短混合 workload 已完成三个独立进程；warmup、measurement、raw 与 aggregation 已分离并有哈希封存和独立复算。阶段结论只确认实验基础完整，不声称调度策略性能提升。
 - 当前阶段切换到阶段 3“调度策略比较”。唯一下一小切片是先冻结 FCFS 对照身份、单变量比较、指标/公平性与重复实验合约；在该合约审阅前不修改 Scheduler 或运行新策略实验。
+- 阶段 2 纯文档收口以提交 `f9c4fd8d4a79b900ee77577a2845655b63ddd62f` 创建 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22)，基于 PR #21 合并后的 `main` `77160a7`；初始范围为 4 个状态文档，不包含代码或实验产物。
