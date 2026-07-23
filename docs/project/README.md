@@ -3,10 +3,10 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-23（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；PR #20 已合并，正式 aggregation 与独立复算完成，结果文档待提交审阅
-- 当前主线：审阅并合并正式 aggregation 结果记录；随后只做阶段 2 最终状态收口
+- 当前阶段：阶段 2——指标与混合负载；正式 aggregation 与独立复算完成，结果位于 Draft PR #21
+- 当前主线：审阅并合并 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)；随后只做阶段 2 最终状态收口
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
-- 阶段 2 状态：技术退出标准已满足；等待结果记录与最终状态文档进入 `main` 后正式关闭阶段
+- 阶段 2 状态：技术退出标准已满足；等待 PR #21 与最终状态收口进入 `main` 后正式关闭阶段
 
 ## 60 秒恢复流程
 
@@ -117,6 +117,7 @@
 - [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20) 在 68 tests 与正式 raw 哈希复验后以 merge commit `a8c2efc0f14901b462a346354c134f3642b448a3` 合并；未修改 Scheduler、driver、`bench.py` 或冻结 workload。
 - 三份正式 raw 已从合并后的 `NSL-S2-AGG-v1` 只读汇总：192/192 valid finished、0 invalid、0 unmapped；三次 Output Token/s 为 826.406070、864.999913、864.296016，mean ± sample SD 为 851.900666 ± 22.081773。完整延迟、分位数与限制见 [`saturated-aggregation-results-2026-07-23.md`](../experiments/saturated-aggregation-results-2026-07-23.md)。
 - 标准库逐字段独立复算、相同创建时间重放、拒绝覆盖、raw/aggregate 哈希回验全部通过；aggregate SHA-256 为 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。阶段 2 技术退出标准已满足，等待结果记录和最终状态收口进入 `main`。
+- 正式结果、完整统计、两次命令纠正与结论边界已进入 Draft [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)；该 PR 只含 4 个结果范围文档，不提交 Git 忽略证据。
 
 ### 环境与阻塞
 
@@ -133,7 +134,7 @@
 
 ### 目标名称
 
-**审阅并合并正式 aggregation 结果记录；完成阶段 2 状态收口**
+**审阅并合并正式 aggregation 结果 PR #21；完成阶段 2 状态收口**
 
 ### 为什么现在做
 
@@ -164,7 +165,7 @@
 
 ## 立即下一步
 
-1. 提交并审阅正式 aggregation 结果记录，核对所有展示数字与封存 JSON。
+1. 审阅 PR #21，核对所有展示数字与封存 JSON，确认远端文件范围和状态。
 2. 合并后做纯状态收口，最终复验 `main`、PR、raw/aggregate 哈希与阶段 2 完成标准。
 
 ## 已推迟、当前不决策

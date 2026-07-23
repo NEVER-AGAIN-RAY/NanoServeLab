@@ -14,6 +14,7 @@
 | Engine 固定项 | `enforce_eager=false`；model len 4,096；max seqs 512；max batched tokens 16,384；GPU memory 0.9；TP 1；KV block 256 |
 | Aggregator | `NSL-S2-AGG-v1` |
 | Aggregator PR / merge | [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20) / `a8c2efc0f14901b462a346354c134f3642b448a3` |
+| 结果记录 PR | [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21) |
 | Aggregate 创建时间 | `2026-07-23T14:33:32.221191+00:00` |
 | 分析机器 | MacBook M4；macOS 15.5 (`24F74`)；arm64 |
 | 分析 Python | `/opt/homebrew/bin/python3`；Python 3.14.6 |

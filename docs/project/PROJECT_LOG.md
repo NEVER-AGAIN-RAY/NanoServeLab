@@ -122,3 +122,4 @@
 - 正式写入前有两次未产生输出的命令错误：`SHA256SUMS` 首次从错误工作目录执行，以及默认沙箱拒绝创建新忽略目录。纠正后原始证据 26 项全清单通过，并以窄范围权限写入此前不存在的输出；没有修改 raw、运行 CUDA 或重跑 benchmark。
 - 标准库独立复算与同 `created_at_utc` 汇总器重放均通过；再次指向同一输出时正确拒绝覆盖。结果为 192 total / 192 valid finished / 0 invalid / 0 unmapped，short 144、long 48；三次 output Token/s 为 826.406070、864.999913、864.296016，跨 run mean ± sample SD 为 851.900666 ± 22.081773。
 - aggregation 证据目录保存 aggregate、`aggregate-validation.json` 与 `SHA256SUMS`；两项自校验通过，清单自身 SHA-256 为 `6b4da18c5fa93944a303f4a009efd00c1be7d1683e7de44746d98493361cf7ee`。完整统计与结论边界见 `docs/experiments/saturated-aggregation-results-2026-07-23.md`。
+- 正式 aggregation 结果以提交 `df4e7477077c820bbfc56259c265769716c6a2ca` 推送并创建 Draft [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)，基于 PR #20 合并后的 `main` `a8c2efc`；初始范围为 4 个结果文档、207 additions / 17 deletions，不包含 Git 忽略 raw 或 aggregate。
