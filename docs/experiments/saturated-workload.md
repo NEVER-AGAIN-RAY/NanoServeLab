@@ -235,10 +235,11 @@ schema v1 顶层字段：
 
 ## 当前交付与下一门槛
 
-本切片交付：
+本切片已交付：
 
 - 固定 workload 合约与不可变 manifest builder；
-- saturated admission driver 与 schema v1 writer（`research/stage2_saturated_driver.py`）；
-- CPU fake-engine 测试：warmup 分离、64 次 admission 先于第一次 step、映射、失败 artifact 与禁止派生字段。
+- saturated admission driver 与 schema v1 writer（`research/stage2_saturated_driver.py`，Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)）；
+- CPU fake-engine 测试与 Mac 轻量 bootstrap（47 tests）；
+- WSL2/CUDA smoke：精确提交 `59d4d9a` 一次真实 LLM 完整运行通过；证据见 [`saturated-smoke-validation-2026-07-23.md`](saturated-smoke-validation-2026-07-23.md)。该 smoke 不是正式 benchmark，不计入未来三次正式实验。
 
-Mac 只验证语法、CLI `--help`（不触发 torch/CUDA）和 fake-engine 合约。下一门槛是审阅本切片，再到 WSL2 做真实 CUDA 冒烟与三次独立进程实验；在那之前不运行正式 benchmark，也不进入聚合切片。
+下一门槛是审查并合并 PR #17。合并后，三次正式 `NSL-S2-SAT-v1` 实验必须使用三个全新 Python 进程并各自保存原始 JSON；aggregation 仍未实现，须等三份正式 raw 验证之后再决策。

@@ -90,3 +90,11 @@
 - 在独立分支 `cursor/stage2-saturated-driver`（基于 `origin/main` `cbe11c6`）实现 saturated admission driver 与 schema v1 writer：`research/stage2_saturated_driver.py`。固定 warmup、64 次 `add_request` 先于第一次 `step`、recorder snapshot diff 映射 `request_index↔seq_id`、成功/失败原始 JSON；未修改 `nanovllm` 核心、`bench.py` 或 `research/stage2_workload.py` 指纹。
 - Mac 轻量 package bootstrap 下新增 driver 测试与既有测试共 44 个全部通过；`py_compile`、CLI `--help`（不触发 torch）、manifest 指纹重算与 `git diff --check` 通过。未运行 CUDA/WSL2，未创建 PR，无性能结论；阶段 2 未完成。下一门槛仍是审阅本切片并做 WSL2/CUDA smoke，不提前进入聚合。
 - 同分支按 Codex 审查修订 driver：setup 失败唯一 artifact、`unmapped_timing_records`、成功终态不变量、`cuda_synchronized` 真实 CUDA 语义、mismatch 保留实际 digest、torch 隔离改为 fresh subprocess。Mac bootstrap 复跑共 47 个测试通过；`py_compile`、CLI `--help`、fresh import 无 torch、指纹与 `git diff --check` 通过。未 commit/push/建 PR，未跑 WSL2/CUDA。
+
+## 2026-07-23
+
+- Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 精确提交 `59d4d9a5bc2c550097e77d24b8f75aff6e335454` 在 WSL 验证分支 `codex/wsl-pr17-smoke` 完成一次行为/CUDA smoke：Ubuntu 24.04.4 + RTX 4060、PyTorch 2.4.0+cu124、既有 `.venv`；运行前后 tracked worktree clean；本轮 WSL 直连 GitHub fetch 已成功。
+- 预检 `Ran 47 tests in 0.344s / OK`；一次真实 LLM smoke 退出码 0，`status=finished`，`cuda_synchronized=true`，64 请求全部 finished，actual Output Token 5,632，`unmapped_timing_records` 为空。
+- recorder 证明 saturated admission：`max(arrival_ns)=15213159684880 <= min(first_scheduled_ns)=15213160050903`。
+- raw JSON `saturated-20260722T161450.289961Z-run1.json`（29,126 Bytes，SHA-256 `0a61e1defd4532eaef37f0eca8b48df235d364fc5fc5d87bddfc647614f81e90`）与日志/审计脚本双端备份；完整事实见 `docs/experiments/saturated-smoke-validation-2026-07-23.md`。不计入正式三次实验，无性能结论。
+- 下一门槛改为审查并合并 PR #17；合并后才启动三个全新进程正式 `NSL-S2-SAT-v1` 实验；aggregation 仍推迟。
