@@ -103,3 +103,10 @@
 - [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 以 merge commit `f4daf0e55ad213093b215fc4fd713b546951609c` 合并到 `main`；saturated admission driver 切片正式进入 `main`。
 - 没有运行三次正式实验，没有 aggregation，没有性能结论。
 - 唯一下一目标为三次全新进程正式 `NSL-S2-SAT-v1`。
+- 纯文档收口 [PR #18](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/18) 经远端差异复核为 5 个预期文件、`CLEAN / MERGEABLE`、无评论/review/check 后，以 merge commit `69c88c252e09bd5d4ffad434c525647d9bf4f207` 合并到 `main`。
+- WSL 在新分支 `codex/wsl-stage2-formal-20260723` 同步到精确 `69c88c2`；Git clean、GPU 空闲、模型 revision/权重 SHA、manifest、47 个单元测试与静态门槛通过。
+- 三个全新 Python 进程串行完成正式 `NSL-S2-SAT-v1` run 1、2、3；均退出码 0、`status=finished`、64 请求、5,632 actual Output Token、无 unmapped record、CUDA 双边界同步且 saturated admission 成立。没有重跑或替换。
+- 三份 raw SHA-256 分别为 `8ee9f9fc7879bbae94058804ea721853d5624eda3c4080cf67ba04fffe2c5a46`、`426416c8a4937e6475a20d1bd099148cdbcabb1b45a37a2d6ace4f9a0034e887`、`298615cf49ad7fdede5d1b8b3820ae759e3f894b2f7bc119e426c5743a04005e`；标准库逐字段/跨 run 审计通过，完整日志异常扫描无匹配。
+- 证据目录已从 WSL 备份到 Mac Git 忽略目录，两端按 `SHA256SUMS` 逐文件验证通过；清单自身 SHA-256 为 `f64d4f4e09851354ad94cdfeb9ca79fb4bdac9a7fc09854163a4e3c16738921d`。
+- preflight helper 名、run 1 快速审计字段形状和 postflight 展示计数各出现一次验证命令错误；原失败日志与纠正日志均保留，均未触发实验重跑或 raw 覆盖。完整事实见 `docs/experiments/saturated-results-2026-07-23.md`。
+- 正式 raw 门槛已完成；尚未 aggregation、未发布延迟/吞吐统计、无性能提升结论。唯一下一目标切换为离线 schema v1 aggregation 小切片。
