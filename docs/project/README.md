@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-23（Asia/Shanghai）
-- 当前阶段：阶段 2——指标与混合负载；离线 schema v1 aggregation 已在独立分支实现并通过独立对抗审查，待提交与 PR
-- 当前主线：提交并审阅 `cursor/stage2-offline-aggregation`；合并前不在正式 raw 上运行汇总或发布统计数字
+- 当前阶段：阶段 2——指标与混合负载；离线 schema v1 aggregation 已通过独立对抗审查并进入 Draft PR #20
+- 当前主线：审阅并合并 [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20)；合并前不在正式 raw 上运行汇总或发布统计数字
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 状态：未完成；正式 `n=3` raw 已交付，离线 aggregation 实现已通过 Mac 审查门槛但尚未合并，也尚未在正式 raw 上产出聚合结果或性能结论
 
@@ -112,7 +112,7 @@
 - 三份 schema v1 raw、完整 driver 日志、标准库逐字段/跨 run 审计和纠正日志已保留于 WSL，并备份到 Mac Git 忽略目录；两端按同一 `SHA256SUMS` 全部通过，清单自身 SHA-256 为 `f64d4f4e09851354ad94cdfeb9ca79fb4bdac9a7fc09854163a4e3c16738921d`。完整事实见 [`docs/experiments/saturated-results-2026-07-23.md`](../experiments/saturated-results-2026-07-23.md)。
 - 独立分支 `cursor/stage2-offline-aggregation`（基于 `origin/main` `16d4f12`）新增离线 schema v1 aggregation：`docs/experiments/aggregation.md`、`research/stage2_aggregate.py`、`tests/test_stage2_aggregate.py`。只读显式 raw 路径；复用 `RequestTimingRecord` + `derive_request_metrics()`；兼容键/混组拒绝、outcome/invalid 计数、all/short/long 统计、measurement 窗口吞吐与 nearest-rank / sample SD 按冻结合约实现。未改 scheduler、recorder、driver、`bench.py` 或 workload manifest。
 - Cursor 初版经独立对抗审查后已修复：failed run 吞吐隔离、严格 JSON integer / 容器校验、冻结 workload 单源身份、重复 request 身份隔离、非法编码与非有限数错误归一、解析 bytes 与 SHA-256 同源、独占创建输出及悬空符号链接拒绝。Mac 轻量 package bootstrap：aggregation 21 个、全套共 68 个测试全部通过；`py_compile`、CLI `--help`、fresh subprocess import 不加载 torch、`git diff --check` 通过。未在三份正式 raw 上运行 aggregation，未发布延迟/吞吐数字，无性能结论。
-- 阶段 2 仍未完成：aggregation 实现已通过独立对抗审查，待提交与 PR；合并前不在正式 raw 上产出聚合结果。
+- 阶段 2 仍未完成：aggregation 实现位于 Draft PR #20，首次远端核对为 `OPEN / MERGEABLE`、6 个预期文件、无评论/review/check；合并前不在正式 raw 上产出聚合结果。
 
 ### 环境与阻塞
 
@@ -129,11 +129,11 @@
 
 ### 目标名称
 
-**提交并合并离线 schema v1 aggregation；之后再在正式 raw 备份上只读运行**
+**审阅并合并离线 schema v1 aggregation PR #20；之后再在正式 raw 备份上只读运行**
 
 ### 为什么现在做
 
-正式三次 raw 已验证并双端备份；离线汇总器、合约和确定性 CPU 测试已在独立分支实现，并完成独立对抗审查与 68 tests 复验。下一步是形成小提交和 PR，核对远端差异后合并；合并前不运行正式汇总，也不发布统计数字或性能结论。
+正式三次 raw 已验证并双端备份；离线汇总器、合约和确定性 CPU 测试已完成独立对抗审查与 68 tests 复验，并以提交 `2d1abaf` 进入 Draft PR #20。下一步是核对后续远端差异与审阅状态并合并；合并前不运行正式汇总，也不发布统计数字或性能结论。
 
 ### 本轮要回答的问题
 
@@ -159,8 +159,8 @@
 
 ## 立即下一步
 
-1. 提交 `cursor/stage2-offline-aggregation` 的合约、实现、21 个 aggregation tests 与状态更新，创建 PR。
-2. 核对远端 diff / checks 后合并；再在三份正式 raw 的 Mac 备份上只读运行汇总，原始 JSON 保持只读。
+1. 审阅 Draft PR #20；确认后续远端 diff 仍只有预期范围，处理可能出现的 review/check。
+2. 转 Ready 并合并后，再在三份正式 raw 的 Mac 备份上只读运行汇总；原始 JSON 保持只读。
 
 ## 已推迟、当前不决策
 

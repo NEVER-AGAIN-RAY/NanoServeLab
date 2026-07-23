@@ -116,3 +116,4 @@
 - 独立对抗审查发现 Cursor 初版会给 failed / 缺失 status 的 run 计算吞吐、用 `int()` 接受或截断 bool/string/float、弱化错误容器、漏收未知 request class、让非法 UTF-8 等异常逃出 CLI，并以 `exists()` + `write_text()` 留下覆盖竞态。上述问题均在本分支修复，未触碰正式 raw。
 - 修复后 loader 严格要求 schema/status/container/integer，单源也必须匹配冻结 `NSL-S2-SAT-v1` workload 与 manifest；finished record 校验 short/long、Token 一致性和时间事实；failed run 吞吐强制为 null；同一份源 bytes 同时用于解析和 SHA-256；输出以独占创建拒绝文件、符号链接和并发覆盖，并拒绝非有限 JSON。
 - 新增对抗性回归后 aggregation 21 tests、Mac 全套轻量 package bootstrap 68 tests 全部通过；静态门槛复验结果见本分支最终审查记录。仍未在正式 raw 上运行 aggregation，未发布任何正式延迟/吞吐统计。
+- aggregation 以提交 `2d1abaf78704326ecd1faa3aeae8e2be54ff1f0c` 推送并创建 Draft [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20)；首次远端核对为 `OPEN / DRAFT / MERGEABLE`，1 个提交、6 个预期文件、无评论/review，仓库未报告 checks。PR 明确指向 `NEVER-AGAIN-RAY/NanoServeLab:main`，未向 upstream 写入。
