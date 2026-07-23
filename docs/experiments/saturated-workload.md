@@ -246,4 +246,4 @@ schema v1 顶层字段：
 
 driver、smoke 与三次正式运行门槛均已完成。正式 run 1、2、3 在精确 `main` `69c88c252e09bd5d4ffad434c525647d9bf4f207` 上由三个全新 Python 进程串行完成；三份 schema v1 raw、完整日志、独立标准库审计与 WSL/Mac 双端 SHA-256 备份见 [`saturated-results-2026-07-23.md`](saturated-results-2026-07-23.md)。
 
-离线 schema v1 aggregation 合约与实现已由 [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20) 合并；三份正式 raw 随后完成只读汇总与独立复算，完整结果进入 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)。没有修改冻结 workload 或 raw，也没有调度策略性能提升结论。
+离线 schema v1 aggregation 合约与实现已由 [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20) 合并；三份正式 raw 随后完成只读汇总与独立复算，完整结果由 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21) 合并。没有修改冻结 workload 或 raw，也没有调度策略性能提升结论。
