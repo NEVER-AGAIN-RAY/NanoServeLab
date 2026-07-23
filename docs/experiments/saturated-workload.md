@@ -1,6 +1,6 @@
 # 阶段 2：Saturated 长短混合 Workload 合约
 
-本文冻结 NanoServeLab 阶段 2 第一版长短混合 workload：`NSL-S2-SAT-v1`。它规定请求类别、顺序、Token 构造、准入模型、warmup、测量边界、重复规则和未来原始结果格式。当前切片只实现确定性 manifest 构造与 CPU 合约测试，不运行模型、CUDA 或 benchmark。
+本文冻结 NanoServeLab 阶段 2 第一版长短混合 workload：`NSL-S2-SAT-v1`。它规定请求类别、顺序、Token 构造、准入模型、warmup、测量边界、重复规则和原始结果格式。workload manifest 已冻结；saturated admission driver 与 schema v1 writer 在独立研究层实现，不修改 nano-vLLM 核心或 `bench.py`。
 
 ## 研究用途与限制
 
@@ -112,7 +112,7 @@ warmup 完成后：
 
 ## 模型、采样与引擎固定项
 
-后续 WSL2 driver 必须固定并记录：
+后续 / 当前 research driver（`research/stage2_saturated_driver.py`）必须固定并记录：
 
 | 项目 | 固定值 |
 | --- | --- |
@@ -134,24 +134,41 @@ warmup 完成后：
 ## Warmup 与计量边界
 
 - 每个独立进程只构造一个 `LLM`；
-- 在 measured admission 前执行一条固定 warmup 请求；
+- 在 measured admission 前执行一条固定 warmup 请求：
+  - prompt：`"Benchmark: "`；
+  - sampling：`temperature=0.6`，`max_tokens=64`，`ignore_eos=true`（显式写出，不依赖 `SamplingParams` 默认值）；
 - warmup 不进入 measured 请求数、吞吐分子或延迟汇总；
-- recorder 若在 LLM 构造时已经启用，warmup timing record 必须原样保留在原始结果的 `warmup.timing_records`，不能静默删除或混入 measured `requests`；
-- warmup 返回后先同步 CUDA，再开始 `measurement_started_ns`；
-- `measurement_ended_ns` 只能在所有 measured 请求完成并再次同步 CUDA后写入；
+- recorder 在 LLM 构造时启用；warmup 完成后立刻保存当时全部 timing records 到原始结果的 `warmup.timing_records`，不能删除，也不能混入 measured `requests`；
+- warmup 返回后先调用 CUDA synchronize，再记录 `measurement_started_ns`；
+- `measurement_ended_ns` 只能在所有 measured 请求完成并再次 CUDA synchronize 后写入；失败运行不得伪造该结束边界；
 - 模型加载、CUDA Graph 捕获和 warmup 不属于 measured window。
 
 正式实验至少运行 3 次，每次使用全新 Python 进程和全新 `LLM`，不能在同一进程循环三次。任一次失败必须保留，不能只重跑失败或较慢的一次来替换原结果。
 
-## 未来原始结果格式
+## schema v1 原始结果格式
 
-未来 driver 每次运行写一个 Git 忽略的：
+实现位于 `research/stage2_saturated_driver.py`。每次运行写一个 Git 忽略的：
 
 ```text
 results/raw/stage2/saturated/saturated-<UTC>-run<N>.json
 ```
 
-schema v1 至少包含：
+CLI 可配置 `--model`、`--run-number`、`--output-dir`；不能通过 CLI 静默改写冻结的 workload、采样温度、`ignore_eos`、引擎容量或 manifest。
+
+运行前重算 `manifest_sha256`；与冻结指纹不一致时立即失败。
+
+driver 行为：
+
+1. 每进程创建一个带 `timing_recorder` 的 `LLM`；
+2. 执行固定 warmup，保存 warmup timing records；
+3. CUDA synchronize → `measurement_started_ns`；
+4. 按 `request_index` 0..63 依次 `add_request`；第 64 次完成前不调用 `step`；
+5. 每次 `add_request` 前后比较 recorder snapshot 的 `seq_id` 集合，必须恰好新增 1 条，以此建立 `request_index ↔ seq_id`；不读取 `Sequence.counter`，不假设连续 ID，不探查私有 waiting 队列；
+6. 全部准入后再循环 `step`，直到 `is_finished()`；不使用 `generate()` 执行 measured workload；
+7. 末端 CUDA synchronize → `measurement_ended_ns`；
+8. 写出 schema v1 JSON。失败时尽最大可能保留 artifact，CLI 返回非零退出码。
+
+schema v1 顶层字段：
 
 ```json
 {
@@ -160,7 +177,9 @@ schema v1 至少包含：
   "run_id": "unique-run-id",
   "run_number": 1,
   "created_at_utc": "...",
-  "repository": {},
+  "status": "finished",
+  "error": null,
+  "repository": {"commit": "...", "branch": "...", "dirty": false},
   "environment": {},
   "model": {},
   "engine": {},
@@ -173,35 +192,54 @@ schema v1 至少包含：
   },
   "warmup": {
     "measured": false,
+    "prompt": "Benchmark: ",
+    "sampling": {
+      "temperature": 0.6,
+      "max_tokens": 64,
+      "ignore_eos": true
+    },
     "timing_records": []
   },
   "measurement": {
     "clock": "time.perf_counter_ns",
     "started_ns": 0,
     "ended_ns": 0,
-    "cuda_synchronized": true
+    "cuda_synchronized": false
   },
-  "requests": []
+  "requests": [],
+  "unmapped_timing_records": []
 }
 ```
 
-每个 measured request 至少保存：
+每个已准入 measured request 至少保存：
 
 - `request_index` 和进程内 `seq_id`；
 - `request_class`；
-- Prompt Token 数和请求 Output Token 数；
-- 实际 Output Token 数和 outcome；
-- Arrival、First Scheduled、First Output、Completion 原始纳秒时间戳；
-- 错误字段（没有错误时为 `null`）。
+- `prompt_tokens` 与 `requested_output_tokens`；
+- 实际 `output_tokens` 与 `outcome`；
+- Arrival / First Scheduled / First Output / Completion 原始纳秒时间戳；
+- `error`（无错误时为 `null`）。
 
-原始 JSON 不保存 Queue Time、TTFT、TPOT、E2E 或 percentile；这些值必须从原始记录通过已验证的派生/聚合层重算，避免重复字段互相矛盾。`request_index` 是跨运行对齐 workload 位置的键，`seq_id` 只记录当次进程事实，不能单独作为跨运行 ID。
+`unmapped_timing_records` 保存 recorder 中既不属于 warmup、也不属于已成功 `request_index↔seq_id` 映射的原始 timing records，按 `seq_id` 升序；成功运行必须为空数组。不得因为映射失败而丢弃这些原始事实，也不得把它们伪造进 `requests`。
+
+`measurement.cuda_synchronized` 仅在真实 CUDA 可用且测量窗口两端同步都成功时为 `true`；CPU / fake-engine 路径即使调用了同步 callback，也必须写 `false`。不得把“callback 被调用”写成“CUDA 已同步”。
+
+规则：
+
+- 原始 JSON 不保存 Queue Time、TTFT、TPOT、E2E、elapsed、throughput、percentile 或任何聚合结果；
+- 未进入终态的已准入请求写 `outcome="incomplete"`，不得伪造 `completed` timestamp；
+- 失败 artifact 保留顶层 `error`、warmup records、已完成映射、已有 measured timing、`unmapped_timing_records`，以及 incomplete 请求；`measurement.ended_ns` 保持 `null`；
+- runtime setup（import / seed / LLM 构造）失败也尽量写出唯一一份 failed artifact，并保留已知的 repository、model、engine、workload 与实际重算的 `manifest_sha256`；同一进程不得写第二份重复文件；
+- 在写入成功终态前必须验证：恰好 64 个映射、每条 mapped record 存在、`prompt_tokens` 与 manifest 一致、`outcome=="finished"`、`completed_ns` 非空、`output_tokens` 等于 `requested_output_tokens`（`ignore_eos=true`）、时间戳单调；任一不满足则 `status="failed"`，不得声称成功；
+- `status` 为 `"finished"` 或 `"failed"`。
 
 ## 当前交付与下一门槛
 
-当前切片只交付：
+本切片已交付：
 
-- 固定 workload 合约；
-- 不可变、确定性的 manifest builder；
-- 类别顺序、长度、总量、Token 边界和 SHA-256 CPU 测试。
+- 固定 workload 合约与不可变 manifest builder；
+- saturated admission driver 与 schema v1 writer（`research/stage2_saturated_driver.py`，Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)）；
+- CPU fake-engine 测试与 Mac 轻量 bootstrap（47 tests）；
+- WSL2/CUDA smoke：精确提交 `59d4d9a` 一次真实 LLM 完整运行通过；证据见 [`saturated-smoke-validation-2026-07-23.md`](saturated-smoke-validation-2026-07-23.md)。该 smoke 不是正式 benchmark，不计入未来三次正式实验。
 
-当前没有实现 WSL2 driver、原始 JSON writer、指标聚合或正式实验。下一切片应只实现 saturated admission driver 与 schema v1 原始写出，并用 CPU fake engine 测试“全部准入先于第一次 step”；通过 Mac 审阅后，再到 WSL2 做真实 CUDA 冒烟和三次独立进程实验。
+下一门槛是审查并合并 PR #17。合并后，三次正式 `NSL-S2-SAT-v1` 实验必须使用三个全新 Python 进程并各自保存原始 JSON；aggregation 仍未实现，须等三份正式 raw 验证之后再决策。

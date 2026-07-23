@@ -87,3 +87,14 @@
 - 项目所有者本人明确接受 `NSL-S2-SAT-v1` 的 64 请求、3:1 长短比例、两类长度、固定交错顺序与 saturated batch admission；该取舍记为所有者的研究设计决策，不记为 nano-vLLM 默认值、真实流量分布或实验所得最优值。实验合约补充每组参数的作用与版本化变更步骤；代码将裸 `* 16` 命名为 `PATTERN_REPETITIONS`，不改变请求、Token、manifest 指纹或运行行为。补强后 Mac 轻量 bootstrap 全部 36 个测试通过，相关 `py_compile`、指纹重算与 `git diff --check` 通过。
 - [PR #14](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/14) 最终 HEAD `df899b506eba039b6a69dc0813fb62024017d8ea` 经核对为 Conversation 0、Checks 0、与 `main` 无冲突并可自动合并；项目所有者确认研究设计门槛后转 Ready，以 merge commit `888aef1a4db5189cf42856b982855bd6ad7d60e6` 合并到 `main`。未运行 CUDA 或 benchmark，无性能结论；唯一下一目标切换为 saturated admission driver 与 schema v1 原始 JSON 写出。
 - 完成 Mac GitHub 双链路故障排查。Git / `gh` 失败的根因是 `~/.gitconfig` 残留未监听的 `127.0.0.1:7897` 全局代理，而非 OAuth token 失效；删除代理后 `git ls-remote`、`gh auth status`、`gh api user` 均成功。Codex GitHub 连接器 404 的独立根因是 OAuth 身份为 `NEVER-AGAIN-RAY`，但 GitHub App 只安装在 `consid-yan`；现已将 `ChatGPT Codex Connector` 以单仓库范围安装到 `NEVER-AGAIN-RAY/NanoServeLab`。连接器账户、安装、仓库元数据及 PR #15 读取全部通过。
+- 在独立分支 `cursor/stage2-saturated-driver`（基于 `origin/main` `cbe11c6`）实现 saturated admission driver 与 schema v1 writer：`research/stage2_saturated_driver.py`。固定 warmup、64 次 `add_request` 先于第一次 `step`、recorder snapshot diff 映射 `request_index↔seq_id`、成功/失败原始 JSON；未修改 `nanovllm` 核心、`bench.py` 或 `research/stage2_workload.py` 指纹。
+- Mac 轻量 package bootstrap 下新增 driver 测试与既有测试共 44 个全部通过；`py_compile`、CLI `--help`（不触发 torch）、manifest 指纹重算与 `git diff --check` 通过。未运行 CUDA/WSL2，未创建 PR，无性能结论；阶段 2 未完成。下一门槛仍是审阅本切片并做 WSL2/CUDA smoke，不提前进入聚合。
+- 同分支按 Codex 审查修订 driver：setup 失败唯一 artifact、`unmapped_timing_records`、成功终态不变量、`cuda_synchronized` 真实 CUDA 语义、mismatch 保留实际 digest、torch 隔离改为 fresh subprocess。Mac bootstrap 复跑共 47 个测试通过；`py_compile`、CLI `--help`、fresh import 无 torch、指纹与 `git diff --check` 通过。未 commit/push/建 PR，未跑 WSL2/CUDA。
+
+## 2026-07-23
+
+- Draft [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17) 精确提交 `59d4d9a5bc2c550097e77d24b8f75aff6e335454` 在 WSL 验证分支 `codex/wsl-pr17-smoke` 完成一次行为/CUDA smoke：Ubuntu 24.04.4 + RTX 4060、PyTorch 2.4.0+cu124、既有 `.venv`；运行前后 tracked worktree clean；本轮 WSL 直连 GitHub fetch 已成功。
+- 预检 `Ran 47 tests in 0.344s / OK`；一次真实 LLM smoke 退出码 0，`status=finished`，`cuda_synchronized=true`，64 请求全部 finished，actual Output Token 5,632，`unmapped_timing_records` 为空。
+- recorder 证明 saturated admission：`max(arrival_ns)=15213159684880 <= min(first_scheduled_ns)=15213160050903`。
+- raw JSON `saturated-20260722T161450.289961Z-run1.json`（29,126 Bytes，SHA-256 `0a61e1defd4532eaef37f0eca8b48df235d364fc5fc5d87bddfc647614f81e90`）与日志/审计脚本双端备份；完整事实见 `docs/experiments/saturated-smoke-validation-2026-07-23.md`。不计入正式三次实验，无性能结论。
+- 下一门槛改为审查并合并 PR #17；合并后才启动三个全新进程正式 `NSL-S2-SAT-v1` 实验；aggregation 仍推迟。
