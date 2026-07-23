@@ -123,3 +123,6 @@
 - 标准库独立复算与同 `created_at_utc` 汇总器重放均通过；再次指向同一输出时正确拒绝覆盖。结果为 192 total / 192 valid finished / 0 invalid / 0 unmapped，short 144、long 48；三次 output Token/s 为 826.406070、864.999913、864.296016，跨 run mean ± sample SD 为 851.900666 ± 22.081773。
 - aggregation 证据目录保存 aggregate、`aggregate-validation.json` 与 `SHA256SUMS`；两项自校验通过，清单自身 SHA-256 为 `6b4da18c5fa93944a303f4a009efd00c1be7d1683e7de44746d98493361cf7ee`。完整统计与结论边界见 `docs/experiments/saturated-aggregation-results-2026-07-23.md`。
 - 正式 aggregation 结果以提交 `df4e7477077c820bbfc56259c265769716c6a2ca` 推送并创建 Draft [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)，基于 PR #20 合并后的 `main` `a8c2efc`；初始范围为 4 个结果文档、207 additions / 17 deletions，不包含 Git 忽略 raw 或 aggregate。
+- PR #21 最终为 5 个结果/状态文档；原始证据 26 项、aggregation 证据 2 项、文档对封存 JSON 的逐表一致性均复验通过。远端无评论/review/check 且为 `MERGEABLE` 后转 Ready，以 merge commit `77160a7422dca27a763eb44308bb20c11b91a967` 合并。
+- 阶段 2 至此满足章程退出标准：指标边界及真实 CUDA 事件路径已验证；冻结长短混合 workload 已完成三个独立进程；warmup、measurement、raw 与 aggregation 已分离并有哈希封存和独立复算。阶段结论只确认实验基础完整，不声称调度策略性能提升。
+- 当前阶段切换到阶段 3“调度策略比较”。唯一下一小切片是先冻结 FCFS 对照身份、单变量比较、指标/公平性与重复实验合约；在该合约审阅前不修改 Scheduler 或运行新策略实验。
