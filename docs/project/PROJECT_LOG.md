@@ -117,3 +117,8 @@
 - 修复后 loader 严格要求 schema/status/container/integer，单源也必须匹配冻结 `NSL-S2-SAT-v1` workload 与 manifest；finished record 校验 short/long、Token 一致性和时间事实；failed run 吞吐强制为 null；同一份源 bytes 同时用于解析和 SHA-256；输出以独占创建拒绝文件、符号链接和并发覆盖，并拒绝非有限 JSON。
 - 新增对抗性回归后 aggregation 21 tests、Mac 全套轻量 package bootstrap 68 tests 全部通过；静态门槛复验结果见本分支最终审查记录。仍未在正式 raw 上运行 aggregation，未发布任何正式延迟/吞吐统计。
 - aggregation 以提交 `2d1abaf78704326ecd1faa3aeae8e2be54ff1f0c` 推送并创建 Draft [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20)；首次远端核对为 `OPEN / DRAFT / MERGEABLE`，1 个提交、6 个预期文件、无评论/review，仓库未报告 checks。PR 明确指向 `NEVER-AGAIN-RAY/NanoServeLab:main`，未向 upstream 写入。
+- PR #20 在重新通过 Mac 68 tests、`py_compile`、CLI/import、diff 检查与正式 raw 哈希复验后转 Ready；远端仍为 6 个预期文件、无评论/review/check，以 merge commit `a8c2efc0f14901b462a346354c134f3642b448a3` 合并。
+- 从精确 `origin/main` `a8c2efc` 创建 `codex/stage2-aggregation-results`，在 Mac 对三份正式 raw 做一次唯一成功写入的只读 aggregation。aggregate 为 7,744 Bytes，SHA-256 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。
+- 正式写入前有两次未产生输出的命令错误：`SHA256SUMS` 首次从错误工作目录执行，以及默认沙箱拒绝创建新忽略目录。纠正后原始证据 26 项全清单通过，并以窄范围权限写入此前不存在的输出；没有修改 raw、运行 CUDA 或重跑 benchmark。
+- 标准库独立复算与同 `created_at_utc` 汇总器重放均通过；再次指向同一输出时正确拒绝覆盖。结果为 192 total / 192 valid finished / 0 invalid / 0 unmapped，short 144、long 48；三次 output Token/s 为 826.406070、864.999913、864.296016，跨 run mean ± sample SD 为 851.900666 ± 22.081773。
+- aggregation 证据目录保存 aggregate、`aggregate-validation.json` 与 `SHA256SUMS`；两项自校验通过，清单自身 SHA-256 为 `6b4da18c5fa93944a303f4a009efd00c1be7d1683e7de44746d98493361cf7ee`。完整统计与结论边界见 `docs/experiments/saturated-aggregation-results-2026-07-23.md`。
