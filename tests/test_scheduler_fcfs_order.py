@@ -6,6 +6,7 @@ import unittest
 from types import SimpleNamespace
 
 from nanovllm.engine.scheduler import Scheduler
+from nanovllm.engine.scheduling_policy import FCFS_POLICY
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.sampling_params import SamplingParams
 
@@ -25,14 +26,18 @@ class SchedulerFcfsOrderTest(unittest.TestCase):
         max_num_seqs: int = 3,
         max_num_batched_tokens: int = 8,
         num_kvcache_blocks: int = 16,
+        scheduling_policy: str | None = None,
     ) -> Scheduler:
-        config = SimpleNamespace(
+        config_values = dict(
             max_num_seqs=max_num_seqs,
             max_num_batched_tokens=max_num_batched_tokens,
             eos=-1,
             kvcache_block_size=4,
             num_kvcache_blocks=num_kvcache_blocks,
         )
+        if scheduling_policy is not None:
+            config_values["scheduling_policy"] = scheduling_policy
+        config = SimpleNamespace(**config_values)
         return Scheduler(config)
 
     @staticmethod
@@ -87,6 +92,51 @@ class SchedulerFcfsOrderTest(unittest.TestCase):
         self.assertTrue(is_prefill)
         self.assertEqual(seqs, [third])
         self.assertEqual(list(scheduler.running), [first, second, third])
+
+    def test_explicit_fcfs_matches_the_implicit_default(self):
+        implicit = self.make_scheduler()
+        explicit = self.make_scheduler(scheduling_policy=FCFS_POLICY)
+        implicit_seqs = [
+            self.make_sequence(length, token_base=base)
+            for length, base in ((6, 10), (2, 30), (3, 50))
+        ]
+        explicit_seqs = [
+            self.make_sequence(length, token_base=base)
+            for length, base in ((6, 10), (2, 30), (3, 50))
+        ]
+        for implicit_seq, explicit_seq in zip(
+            implicit_seqs,
+            explicit_seqs,
+            strict=True,
+        ):
+            implicit.add(implicit_seq)
+            explicit.add(explicit_seq)
+
+        implicit_batch, implicit_prefill = implicit.schedule()
+        explicit_batch, explicit_prefill = explicit.schedule()
+
+        self.assertEqual(implicit.scheduling_policy, FCFS_POLICY)
+        self.assertEqual(explicit.scheduling_policy, FCFS_POLICY)
+        self.assertEqual(implicit_prefill, explicit_prefill)
+        self.assertEqual(
+            [seq.prompt_token_ids for seq in implicit_batch],
+            [seq.prompt_token_ids for seq in explicit_batch],
+        )
+        self.assertEqual(
+            [seq.num_scheduled_tokens for seq in implicit_batch],
+            [seq.num_scheduled_tokens for seq in explicit_batch],
+        )
+        self.assertEqual(
+            [seq.prompt_token_ids for seq in implicit.waiting],
+            [seq.prompt_token_ids for seq in explicit.waiting],
+        )
+
+    def test_unknown_policy_is_rejected_before_scheduling(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "unsupported scheduling_policy 'unknown-v1'",
+        ):
+            self.make_scheduler(scheduling_policy="unknown-v1")
 
     def test_unallocatable_waiting_head_is_not_bypassed(self):
         scheduler = self.make_scheduler(num_kvcache_blocks=2)

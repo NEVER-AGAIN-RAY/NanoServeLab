@@ -31,6 +31,10 @@ from typing import TYPE_CHECKING
 
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.engine.block_manager import BlockManager
+from nanovllm.engine.scheduling_policy import (
+    FCFS_POLICY,
+    normalize_scheduling_policy,
+)
 
 if TYPE_CHECKING:
     from nanovllm.config import Config
@@ -47,6 +51,9 @@ class Scheduler:
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
         self.timing_recorder = timing_recorder
+        self.scheduling_policy = normalize_scheduling_policy(
+            getattr(config, "scheduling_policy", FCFS_POLICY)
+        )
 
     def is_finished(self):
         return not self.waiting and not self.running

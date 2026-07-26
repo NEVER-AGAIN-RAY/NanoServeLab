@@ -6,6 +6,7 @@
 - GPU/并行：``gpu_memory_utilization``、``tensor_parallel_size``、
   ``enforce_eager``。
 - KV Cache：``kvcache_block_size``、``num_kvcache_blocks``。
+- 调度身份：``scheduling_policy``，默认 ``fcfs-v1``。
 
 运行期字段：
 - ``hf_config`` 由 ``__post_init__`` 从模型目录加载。
@@ -20,6 +21,11 @@ import os
 from dataclasses import dataclass
 from transformers import AutoConfig
 
+from nanovllm.engine.scheduling_policy import (
+    FCFS_POLICY,
+    normalize_scheduling_policy,
+)
+
 
 @dataclass(slots=True)
 class Config:
@@ -30,12 +36,14 @@ class Config:
     gpu_memory_utilization: float = 0.9
     tensor_parallel_size: int = 1
     enforce_eager: bool = False
+    scheduling_policy: str = FCFS_POLICY
     hf_config: AutoConfig | None = None
     eos: int = -1
     kvcache_block_size: int = 256
     num_kvcache_blocks: int = -1
 
     def __post_init__(self):
+        self.scheduling_policy = normalize_scheduling_policy(self.scheduling_policy)
         assert os.path.isdir(self.model)
         assert self.kvcache_block_size % 256 == 0
         assert 1 <= self.tensor_parallel_size <= 8

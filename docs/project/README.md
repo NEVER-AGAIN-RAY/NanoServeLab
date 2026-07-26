@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，阶段 3 尚未实现策略
-- 当前主线：`fcfs-v1` 多请求特征测试和 running 稳定队首批次语义纠正已完成，Mac 轻量全套 72 tests 通过；Draft [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24) 等待最终审查，不修改 Scheduler
+- 当前主线：PR #24 已合并；显式 `scheduling_policy` 入口已在 Draft [PR #25](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/25) 实现，默认且当前唯一合法值为 `fcfs-v1`，Mac 轻量全套 74 tests 通过，尚未实现长度排序
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -88,6 +88,7 @@
 | 阶段 2 offline aggregation | 已合并 | [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20)，merge `a8c2efc` | schema v1 只读汇总、严格输入/输出边界、Mac 68 tests；正式结果另行记录 |
 | 阶段 2 formal aggregation results | 已合并 | [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)，merge `77160a7` | 192/192 valid、独立复算、派生证据哈希与完整结论边界；阶段 2 正式结果 |
 | 阶段 3 FCFS 与单变量实验合约 | 已合并 | [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)，merge `5cf7beb` | 固定 `NSL-S3-SCHED-v1`；后续特征测试发现 running 应表述为稳定队首批次而非轮转，当前切片正在纠正 |
+| 阶段 3 FCFS 多请求特征测试 | 已合并 | [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24)，merge `30beb3d` | 4 个新测试固定 waiting、Prefill、running 稳定队首批次和队尾抢占；Mac 全套 72 tests |
 
 ### 阶段 1 最终交付
 
@@ -125,6 +126,8 @@
 - 阶段 2 完成状态与阶段 3 唯一下一目标由 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22) 收口；该收口只改状态文档，不实现调度策略。
 - [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23) 经远端差异、评论、review、检查和可合并性核对后，以 merge commit `5cf7beb60c2fbf76bb71509de6d1ec2d2b9f8b4c` 合并。合约固定 waiting FCFS、Prefill 优先、抢占回队首、资源不变量、Prompt 长度第一候选、Policy ID 和新 FCFS 对照规则；没有修改 Scheduler、运行 CUDA 或产生策略结果。
 - 合并后的多请求定向分析发现合约把 running 错写成“一 Token 轮转”：源码会把入选请求恢复到队首，所以 `running > max_num_seqs` 时实际是稳定队首批次优先。分支 `codex/stage3-fcfs-order-tests` 已纠正文档并新增 4 个确定性 CPU 特征测试，覆盖 waiting/Chunked Prefill/Head-of-Line blocking/Prefill 优先、running 稳定队首批次和 KV 压力下队尾抢占；Mac 轻量全套 72 tests、`py_compile` 与 `git diff --check` 通过，未修改 Scheduler。
+- [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24) 经远端范围与 `CLEAN / MERGEABLE` 核对后，以 merge commit `30beb3decd675ef5b240c5edc6bf14b91a5f713e` 合并；FCFS 特征测试和合约纠正进入 `main`。
+- 分支 `codex/stage3-policy-entry` 新增轻量 `scheduling_policy` 身份层：Config 增加默认 `fcfs-v1` 字段，Scheduler 对显式值和旧 fake config 缺省值统一规范化；未知策略在调度前抛 `ValueError`。显式和隐式 FCFS 首批调度等价测试通过，尚无长度排序分支；Mac 新增相关测试 6 个、全套 74 tests 与 `py_compile` 通过。
 
 ### 环境与阻塞
 
@@ -141,42 +144,43 @@
 
 ### 目标名称
 
-**阶段 3 第二切片：固定 `fcfs-v1` 多请求真实行为**
+**阶段 3 第三切片：增加显式 Policy 入口并保持 FCFS 等价**
 
 ### 为什么现在做
 
-`NSL-S3-SCHED-v1` 已合并。实现显式 Policy 入口前必须先用多请求测试固定现有 waiting、Prefill、running 容量和抢占顺序，尤其要纠正此前把稳定队首批次误称为 round-robin 的描述，避免后续把无意行为变化当作策略收益。
+FCFS 多请求特征测试已经进入 `main`。长度策略实现前需要一个显式、可记录、可拒绝未知值的 Policy 入口；默认路径必须继续是 `fcfs-v1`，避免以后仅凭源码 commit 猜测实验使用的策略。
 
-### 本轮固定
+### 本轮实现
 
-- waiting 按到达顺序，Chunked Prefill 请求保持队首；
-- waiting 队首资源不足时不绕过后续可分配请求；
-- 有 waiting Prefill 时，本 step 不混入已有 running Decode；
-- running 使用稳定队首批次，入选请求每轮一 Token 后恢复到队首，不做 round-robin；
-- Decode KV 压力抢占 running 队尾，并把受害者放回 waiting 队首。
+- 新增版本化 Policy 常量与规范化函数；
+- Config 接受 `scheduling_policy`，默认 `fcfs-v1`；
+- Scheduler 暴露规范化后的策略身份；
+- 旧测试 fake config 未提供字段时仍回落到 `fcfs-v1`；
+- 未知 Policy 在 Scheduler 初始化时拒绝；
+- 当前没有策略分支，显式和隐式 FCFS 调度等价。
 
 ### 明确范围
 
-当前切片只覆盖行为特征测试与合约纠正：
+当前切片只覆盖 Policy 身份入口：
 
-- 不修改 Scheduler、KV Cache、driver、`bench.py` 或冻结 workload；
-- 不增加 Policy 入口，不实现长度优先、Priority、Aging 或 Prefix Cache 感知；
+- 不改变 waiting 插入、`schedule()`、抢占、KV Cache、driver、`bench.py` 或冻结 workload；
+- 不实现长度优先、Priority、Aging 或 Prefix Cache 感知；
 - 不运行 CUDA benchmark；
 - 不产生性能结论。
 
 ### 完成标准
 
-- 新测试覆盖 waiting 顺序、Chunked Prefill、Head-of-Line blocking、Prefill 优先、running 稳定队首批次和队尾抢占；
-- 测试在现有 Scheduler 上通过，不为符合旧文档而改变运行行为；
-- 合约与状态文档纠正 round-robin 误述；
+- Config 与 Scheduler 使用同一 Policy ID 和校验；
+- 默认及显式 `fcfs-v1` 行为等价；
+- 未知策略明确失败；
 - Mac 全套轻量测试、语法和 diff 检查通过；
-- 以独立 PR 合并后，下一切片才增加显式 Policy 入口。
+- 以独立 PR 合并后，下一切片才增加 `prompt-length-v1`。
 
 ## 立即下一步
 
-1. 完成 Draft PR #24 的远端差异、评论、review、检查和可合并性审查并合并。
-2. 新开分支增加显式 Policy 入口，默认仍为 `fcfs-v1`。
-3. Policy 默认等价门槛通过后，再实现 `prompt-length-v1`。
+1. 完成 Draft PR #25 的远端审查并合并显式 Policy 入口。
+2. 新开分支实现 `prompt-length-v1` 的 recovery-prefix 后稳定插入。
+3. 长度策略 CPU 测试通过后，再建立阶段 3 raw/driver Policy 身份。
 
 ## 已推迟、当前不决策
 
@@ -186,4 +190,4 @@
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在 `fcfs-v1` 多请求特征测试合并后再分别决策，当前不提前实现。
+这些问题在显式 Policy 入口与 `prompt-length-v1` 分别合并后再决策，当前不提前实现。
