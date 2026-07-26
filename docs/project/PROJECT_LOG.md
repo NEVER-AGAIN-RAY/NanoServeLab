@@ -135,3 +135,8 @@
 - 第一候选 `prompt-length-v1` 只允许按 `num_prompt_tokens` 改变新到达请求在 waiting 中的稳定插入位置；相同长度保持到达顺序，不动态重排已开始 Chunked Prefill 或被抢占请求，不改变 Decode、抢占、KV 或完成语义。
 - 阶段 2 mixed baseline 只作为历史锚点；阶段 3 正式对照必须在同一 clean commit 与环境下显式记录 Policy ID，并为 FCFS 和 Candidate 各运行 3 个全新进程。合约固定复用 `NSL-S2-SAT-v1`，保留 all/short/long 指标、最坏等待与尾延迟证据，不引入复杂公平性综合分数。
 - 项目所有者授权按上述默认方向继续。合约以提交 `f5acb600ebd946dfe8f9716e5c0aea2282641b44` 推送并创建 Draft [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)，目标为 `main`，初始范围为 3 个纯文档文件、357 additions / 17 deletions；没有向 `upstream` 写入。下一门槛是完成 PR 远端审查与合并，随后用独立切片补齐 FCFS 多请求顺序测试，不在当前文档 PR 实现策略。
+- PR #23 更新后仍为 3 个预期文档文件、2 个提交，无评论、review 或 CI check；转 Ready 后 GitHub 判定 `CLEAN / MERGEABLE`，以 merge commit `5cf7beb60c2fbf76bb71509de6d1ec2d2b9f8b4c` 合并到 `main`。
+- 在后续 `fcfs-v1` 多请求特征测试设计中发现合约技术误述：`Scheduler.schedule()` 通过 `running.extendleft(reversed(scheduled_seqs))` 把入选请求恢复到队首；当 running 数量超过 `max_num_seqs` 时，同一队首批次会继续被选择，队尾不会 round-robin。当前独立分支 `codex/stage3-fcfs-order-tests` 纠正合约并用测试固定真实行为，不修改 Scheduler。
+- 新增 `tests/test_scheduler_fcfs_order.py` 的 4 个确定性 CPU 特征测试：固定 waiting 到达顺序与 Chunked Prefill 队首、不可分配队首不绕过后续可分配请求、waiting Prefill 相对 running Decode 的 step 级优先、running 稳定队首批次以及 KV 压力下 running 队尾抢占回 waiting 队首。
+- 普通 Mac `unittest` 因项目未安装完整运行时依赖而在 import 阶段分别缺少 `tqdm`、`xxhash`；没有为此运行根目录 `uv sync` 或安装 CUDA-only 依赖。按既有轻量 package bootstrap 注入包 namespace 和最小 hash/array 替身后，新增 4 tests 与全套 72 tests 全部通过；新增测试 `py_compile` 和 `git diff --check` 通过。替身只服务 Scheduler CPU 语义，真实依赖与 CUDA 路径仍留给后续 WSL2 门槛。
+- 特征测试与合约纠正以提交 `5c9f9992b57f71797392bacfbef86429bafda861` 推送并创建 Draft [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24)，目标为 `main`，初始范围为 4 个文件、223 additions / 28 deletions；没有运行 CUDA、修改 Scheduler 或向 `upstream` 写入。
