@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，阶段 3 尚未实现策略
-- 当前主线：`NSL-S3-SCHED-v1` FCFS 对照与单变量实验合约已由项目所有者授权按默认方向继续，并创建 Draft [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)；下一门槛是完成纯文档审查与合并，合并前不修改 Scheduler
+- 当前主线：`fcfs-v1` 多请求特征测试和 running 稳定队首批次语义纠正已完成，Mac 轻量全套 72 tests 通过；下一门槛是发布并合并本测试切片，不修改 Scheduler
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -87,6 +87,7 @@
 | 阶段 2 saturated admission driver | 已合并 | [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)，merge `f4daf0e` | schema v1 writer、Mac 47 tests、WSL2/CUDA smoke；后续正式 `n=3` 已完成 |
 | 阶段 2 offline aggregation | 已合并 | [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20)，merge `a8c2efc` | schema v1 只读汇总、严格输入/输出边界、Mac 68 tests；正式结果另行记录 |
 | 阶段 2 formal aggregation results | 已合并 | [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)，merge `77160a7` | 192/192 valid、独立复算、派生证据哈希与完整结论边界；阶段 2 正式结果 |
+| 阶段 3 FCFS 与单变量实验合约 | 已合并 | [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)，merge `5cf7beb` | 固定 `NSL-S3-SCHED-v1`；后续特征测试发现 running 应表述为稳定队首批次而非轮转，当前切片正在纠正 |
 
 ### 阶段 1 最终交付
 
@@ -122,7 +123,8 @@
 - 标准库逐字段独立复算、相同创建时间重放、拒绝覆盖、raw/aggregate 哈希回验全部通过；aggregate SHA-256 为 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。
 - 正式结果、完整统计、两次命令纠正与结论边界已由 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21) 以 merge commit `77160a7422dca27a763eb44308bb20c11b91a967` 合并。阶段 2 没有剩余代码、实验或结果文档交付项。
 - 阶段 2 完成状态与阶段 3 唯一下一目标由 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22) 收口；该收口只改状态文档，不实现调度策略。
-- 独立分支 `codex/stage3-fcfs-contract` 已起草 `NSL-S3-SCHED-v1`：精确定义 waiting FCFS、running 一 Token 轮转、Prefill 优先、抢占回队首和固定资源机制；第一候选为按 `num_prompt_tokens` 稳定插入的新请求长度策略。合约要求阶段 3 新跑 FCFS 对照、每种策略各 3 个全新进程、显式 Policy ID、长短分组公平性和失败证据保留。本切片只改文档，尚未修改 Scheduler、运行 CUDA 或产生策略结果；项目所有者已授权按默认方向继续，Draft [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23) 等待最终纯文档审查。
+- [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23) 经远端差异、评论、review、检查和可合并性核对后，以 merge commit `5cf7beb60c2fbf76bb71509de6d1ec2d2b9f8b4c` 合并。合约固定 waiting FCFS、Prefill 优先、抢占回队首、资源不变量、Prompt 长度第一候选、Policy ID 和新 FCFS 对照规则；没有修改 Scheduler、运行 CUDA 或产生策略结果。
+- 合并后的多请求定向分析发现合约把 running 错写成“一 Token 轮转”：源码会把入选请求恢复到队首，所以 `running > max_num_seqs` 时实际是稳定队首批次优先。分支 `codex/stage3-fcfs-order-tests` 已纠正文档并新增 4 个确定性 CPU 特征测试，覆盖 waiting/Chunked Prefill/Head-of-Line blocking/Prefill 优先、running 稳定队首批次和 KV 压力下队尾抢占；Mac 轻量全套 72 tests、`py_compile` 与 `git diff --check` 通过，未修改 Scheduler。
 
 ### 环境与阻塞
 
@@ -139,42 +141,42 @@
 
 ### 目标名称
 
-**阶段 3 第一切片：审阅并冻结 FCFS 对照与调度策略实验合约**
+**阶段 3 第二切片：固定 `fcfs-v1` 多请求真实行为**
 
 ### 为什么现在做
 
-阶段 2 已经建立可复现的 mixed-workload FCFS 参考、请求级延迟、吞吐和尾延迟证据。`NSL-S3-SCHED-v1` 草案现已把 FCFS 身份、单变量边界、重复运行与公平性规则写成可审阅合约；项目所有者已授权采用默认研究取舍，当前只剩纯文档 PR 审查与合并门槛。
+`NSL-S3-SCHED-v1` 已合并。实现显式 Policy 入口前必须先用多请求测试固定现有 waiting、Prefill、running 容量和抢占顺序，尤其要纠正此前把稳定队首批次误称为 round-robin 的描述，避免后续把无意行为变化当作策略收益。
 
-### 草案已经固定
+### 本轮固定
 
-- `fcfs-v1` 是 waiting 队首准入加 running 一 Token 稳定轮转，不是串行完成式 FCFS；
-- 第一候选 `prompt-length-v1` 只按 `num_prompt_tokens` 改变新到达请求的 waiting 插入位置，相同长度保持到达顺序；
-- 阶段 2 mixed baseline 只作历史锚点；每个候选策略必须在同一阶段 3 代码和环境下新跑 3 次 FCFS 与 3 次 Candidate；
-- 固定复用 `NSL-S2-SAT-v1`、现有指标公式和 all/short/long 分组，不引入复杂公平性综合分数；
-- 阶段 3 raw 必须使用新实验身份并显式记录 Policy ID，不能静默改写阶段 2 schema 或 raw。
+- waiting 按到达顺序，Chunked Prefill 请求保持队首；
+- waiting 队首资源不足时不绕过后续可分配请求；
+- 有 waiting Prefill 时，本 step 不混入已有 running Decode；
+- running 使用稳定队首批次，入选请求每轮一 Token 后恢复到队首，不做 round-robin；
+- Decode KV 压力抢占 running 队尾，并把受害者放回 waiting 队首。
 
 ### 明确范围
 
-当前审阅门槛只覆盖阶段 3 实验合约：
+当前切片只覆盖行为特征测试与合约纠正：
 
 - 不修改 Scheduler、KV Cache、driver、`bench.py` 或冻结 workload；
-- 不提前实现长度优先、Priority、Aging 或 Prefix Cache 感知；
+- 不增加 Policy 入口，不实现长度优先、Priority、Aging 或 Prefix Cache 感知；
 - 不运行 CUDA benchmark；
-- 不把阶段 1 与阶段 2 不同 workload 的吞吐直接比较；
-- 不预设新策略一定改善性能。
+- 不产生性能结论。
 
 ### 完成标准
 
-- 项目所有者授权采用 `NSL-S3-SCHED-v1` 的 baseline 身份、长度排序键、重复顺序、公平性和结论规则；
-- 文档链接、术语、源码映射和阶段 2 固定事实核对通过；
-- 合约以独立纯文档 PR 合并；
-- 合并后唯一下一切片改为补齐 `fcfs-v1` 多请求顺序测试，仍先不改变 Scheduler 行为。
+- 新测试覆盖 waiting 顺序、Chunked Prefill、Head-of-Line blocking、Prefill 优先、running 稳定队首批次和队尾抢占；
+- 测试在现有 Scheduler 上通过，不为符合旧文档而改变运行行为；
+- 合约与状态文档纠正 round-robin 误述；
+- Mac 全套轻量测试、语法和 diff 检查通过；
+- 以独立 PR 合并后，下一切片才增加显式 Policy 入口。
 
 ## 立即下一步
 
-1. 完成 Draft PR #23 的远端差异、评论、review、检查和可合并性审查；本 PR 不写策略代码。
-2. 审查通过后转 Ready 并合并。
-3. 合约合并后，新开分支补 `fcfs-v1` 多请求顺序测试，再进入显式 Policy 入口。
+1. 提交、发布并合并纯特征测试/文档纠正 PR。
+2. 新开分支增加显式 Policy 入口，默认仍为 `fcfs-v1`。
+3. Policy 默认等价门槛通过后，再实现 `prompt-length-v1`。
 
 ## 已推迟、当前不决策
 
@@ -184,4 +186,4 @@
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在 `NSL-S3-SCHED-v1` 审阅合并后再分别决策，当前不提前实现。
+这些问题在 `fcfs-v1` 多请求特征测试合并后再分别决策，当前不提前实现。

@@ -38,18 +38,19 @@
 
 ### Running 队列
 
-当前 Decode 不是“先到请求一直跑到结束”，而是按 running 队列轮转：
+当前 Decode 使用 running 队列的稳定队首批次：
 
-- 每轮从 running 队首依次取请求；
+- 每轮从 running 队首依次取请求，最多选择 `max_num_seqs` 个；
 - 每个成功准入的 running 请求本轮只调度 1 个 Token；
-- 本轮选择完成后，Scheduler 恢复这些请求的原有相对顺序；
+- 本轮选择完成后，Scheduler 把这些请求按原相对顺序恢复到 running 队首；
+- 当 running 数量超过 `max_num_seqs` 时，同一个队首子集会连续被选中，队尾请求要等前面的请求完成或被抢占；
 - 已完成请求在 `postprocess()` 中从 running 移除并释放 KV Block。
 
 所以 `fcfs-v1` 的准确表述是：
 
-> waiting 阶段 FCFS 队首准入，running 阶段保持稳定顺序的一 Token 轮转。
+> waiting 阶段 FCFS 队首准入，running 阶段稳定队首批次优先，每个入选请求每轮一个 Token。
 
-不得把它描述成串行完成式 FCFS，也不得仅凭请求完成顺序推断 waiting 选择顺序。
+不得把它描述成 round-robin，也不得仅凭请求完成顺序推断 waiting 选择顺序。在当前阶段 2 正式配置中 `max_num_seqs=512` 而 workload 只有 64 个请求，通常所有 running 请求都能同时进入 Decode 批次；多请求 CPU 测试仍必须固定超出容量时的真实行为。
 
 ### 抢占与恢复
 
@@ -278,7 +279,7 @@ relative_delta_percent = (candidate - fcfs) / fcfs * 100
 3. 队首资源不足时不绕过后续请求；
 4. Chunked Prefill 未完成请求保持队首；
 5. Prompt 完成后按顺序进入 running；
-6. running 每轮一 Token，轮转后相对顺序不变；
+6. running 使用稳定队首批次；入选请求每轮一 Token 并恢复到队首，超出 `max_num_seqs` 的队尾请求不轮转；
 7. Prefill 成功时同一 step 不混入 Decode；
 8. KV 不足时抢占 running 队尾并回 waiting 队首；
 9. 默认 Policy 为 `fcfs-v1`，与改动前顺序快照等价；
