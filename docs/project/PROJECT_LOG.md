@@ -144,3 +144,6 @@
 - 从该合并提交创建独立分支 `codex/stage3-policy-entry`：新增 `nanovllm/engine/scheduling_policy.py` 的 `FCFS_POLICY`、支持集合与严格规范化；Config 增加默认 `scheduling_policy=fcfs-v1`；Scheduler 对 Config 显式值和旧 fake config 缺省值统一规范化并暴露身份。当前支持集合只有 FCFS，没有改变 waiting、`schedule()`、抢占或 KV 行为。
 - 在既有 FCFS 特征测试中新增显式/隐式 `fcfs-v1` 首批调度等价和未知 Policy 拒绝测试。相关 6 tests 与 Mac 轻量全套 74 tests 全部通过，`scheduling_policy.py`、Config、Scheduler 和测试的 `py_compile` 通过；未构造真实 LLM、运行 CUDA 或产生策略结果。
 - 显式 Policy 入口以提交 `45bd3fe984af063050744e3413e7809b017cfaff` 推送并创建 Draft [PR #25](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/25)，目标为 `main`，初始范围为 6 个文件、110 additions / 21 deletions；没有实现长度排序、运行 CUDA 或向 `upstream` 写入。
+- PR #25 最终为 6 个预期文件、2 个提交，无评论、review 或 CI check；转 Ready 后 GitHub 判定 `CLEAN / MERGEABLE`，以 merge commit `e0a69abe1eceac55d3188a2c52f652bc116150b2` 合并到 `main`。
+- 从该合并提交创建独立分支 `codex/stage3-prompt-length-policy`：将 `prompt-length-v1` 加入支持集合；`Scheduler.add()` 在 FCFS 下仍直接 append，在长度策略下先跳过 recovery prefix，再按 `num_prompt_tokens` 升序稳定插入 fresh 请求。recovery 由仍有 `block_table` 的 Chunked Prefill 请求或已有 Completion Token 的被抢占请求识别；`schedule()`、Decode、抢占、KV 和完成路径未改。
+- 新增长度顺序/稳定并列、Chunked Prefill recovery、被抢占 recovery 三个策略测试。相关 9 tests 与 Mac 轻量全套 77 tests 全部通过，策略模块、Scheduler 和测试 `py_compile` 通过；没有构造真实 LLM、运行 CUDA 或产生性能结论。

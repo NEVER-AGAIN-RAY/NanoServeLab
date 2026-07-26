@@ -33,6 +33,7 @@ from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.engine.block_manager import BlockManager
 from nanovllm.engine.scheduling_policy import (
     FCFS_POLICY,
+    PROMPT_LENGTH_POLICY,
     normalize_scheduling_policy,
 )
 
@@ -61,7 +62,15 @@ class Scheduler:
     def add(self, seq: Sequence):
         if self.timing_recorder is not None:
             self.timing_recorder.record_arrival(seq.seq_id, seq.num_prompt_tokens)
-        self.waiting.append(seq)
+        if self.scheduling_policy == FCFS_POLICY:
+            self.waiting.append(seq)
+            return
+        if self.scheduling_policy == PROMPT_LENGTH_POLICY:
+            self._insert_by_prompt_length(seq)
+            return
+        raise AssertionError(
+            f"normalized scheduling policy is not implemented: {self.scheduling_policy}"
+        )
 
     def schedule(self) -> tuple[list[Sequence], bool]:
         scheduled_seqs = []
@@ -149,3 +158,23 @@ class Scheduler:
             return
         for seq in scheduled_seqs:
             self.timing_recorder.record_first_scheduled(seq.seq_id)
+
+    def _insert_by_prompt_length(self, seq: Sequence) -> None:
+        """Insert a fresh request after recovery work, preserving stable ties."""
+        insert_at = 0
+        while insert_at < len(self.waiting):
+            waiting_seq = self.waiting[insert_at]
+            is_recovery = (
+                bool(waiting_seq.block_table)
+                or waiting_seq.num_completion_tokens > 0
+            )
+            if not is_recovery:
+                break
+            insert_at += 1
+
+        while insert_at < len(self.waiting):
+            waiting_seq = self.waiting[insert_at]
+            if waiting_seq.num_prompt_tokens > seq.num_prompt_tokens:
+                break
+            insert_at += 1
+        self.waiting.insert(insert_at, seq)
