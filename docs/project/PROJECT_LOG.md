@@ -140,3 +140,6 @@
 - 新增 `tests/test_scheduler_fcfs_order.py` 的 4 个确定性 CPU 特征测试：固定 waiting 到达顺序与 Chunked Prefill 队首、不可分配队首不绕过后续可分配请求、waiting Prefill 相对 running Decode 的 step 级优先、running 稳定队首批次以及 KV 压力下 running 队尾抢占回 waiting 队首。
 - 普通 Mac `unittest` 因项目未安装完整运行时依赖而在 import 阶段分别缺少 `tqdm`、`xxhash`；没有为此运行根目录 `uv sync` 或安装 CUDA-only 依赖。按既有轻量 package bootstrap 注入包 namespace 和最小 hash/array 替身后，新增 4 tests 与全套 72 tests 全部通过；新增测试 `py_compile` 和 `git diff --check` 通过。替身只服务 Scheduler CPU 语义，真实依赖与 CUDA 路径仍留给后续 WSL2 门槛。
 - 特征测试与合约纠正以提交 `5c9f9992b57f71797392bacfbef86429bafda861` 推送并创建 Draft [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24)，目标为 `main`，初始范围为 4 个文件、223 additions / 28 deletions；没有运行 CUDA、修改 Scheduler 或向 `upstream` 写入。
+- PR #24 最终为 4 个预期文件、2 个提交，无评论、review 或 CI check；转 Ready 后 GitHub 判定 `CLEAN / MERGEABLE`，以 merge commit `30beb3decd675ef5b240c5edc6bf14b91a5f713e` 合并到 `main`。
+- 从该合并提交创建独立分支 `codex/stage3-policy-entry`：新增 `nanovllm/engine/scheduling_policy.py` 的 `FCFS_POLICY`、支持集合与严格规范化；Config 增加默认 `scheduling_policy=fcfs-v1`；Scheduler 对 Config 显式值和旧 fake config 缺省值统一规范化并暴露身份。当前支持集合只有 FCFS，没有改变 waiting、`schedule()`、抢占或 KV 行为。
+- 在既有 FCFS 特征测试中新增显式/隐式 `fcfs-v1` 首批调度等价和未知 Policy 拒绝测试。相关 6 tests 与 Mac 轻量全套 74 tests 全部通过，`scheduling_policy.py`、Config、Scheduler 和测试的 `py_compile` 通过；未构造真实 LLM、运行 CUDA 或产生策略结果。
