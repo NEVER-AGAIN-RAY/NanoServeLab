@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，阶段 3 尚未实现策略
-- 当前主线：PR #24 已合并；显式 `scheduling_policy` 入口已在独立分支实现，默认且当前唯一合法值为 `fcfs-v1`，Mac 轻量全套 74 tests 通过，尚未实现长度排序
+- 当前主线：PR #24 已合并；显式 `scheduling_policy` 入口已在 Draft [PR #25](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/25) 实现，默认且当前唯一合法值为 `fcfs-v1`，Mac 轻量全套 74 tests 通过，尚未实现长度排序
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -178,7 +178,7 @@ FCFS 多请求特征测试已经进入 `main`。长度策略实现前需要一�
 
 ## 立即下一步
 
-1. 提交、发布并合并显式 Policy 入口 PR。
+1. 完成 Draft PR #25 的远端审查并合并显式 Policy 入口。
 2. 新开分支实现 `prompt-length-v1` 的 recovery-prefix 后稳定插入。
 3. 长度策略 CPU 测试通过后，再建立阶段 3 raw/driver Policy 身份。
 
