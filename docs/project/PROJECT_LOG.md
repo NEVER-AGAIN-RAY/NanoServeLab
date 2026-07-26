@@ -160,3 +160,6 @@
 - 对抗性审查补上实际 `created_at_utc` 顺序证明和 Stage 3 aggregate writer 身份校验。新增 aggregation 14 tests；Mac 轻量全套 103 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过。没有运行 CUDA、读取正式 Stage 3 raw 或产生性能结论。
 - Stage 3 aggregation 以提交 `62938a9fd273a4a1f8daff5fd360295970b6088e` 推送并创建 Draft [PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28)，目标为 `main`，初始范围为 5 个文件、1,643 additions / 21 deletions；没有向 `upstream` 写入。
 - PR #28 第二轮边界审查明确：兼容键完整的 failed run 可进入 invalid comparison 并保留部分证据；若 setup 失败导致环境/模型/固定 engine/workload 兼容键缺失，则整组拒绝，避免在无法证明同环境时仍生成对照。
+- PR #28 最终为 5 个预期文件、3 个提交，无评论、review 或 CI check；转 Ready 后 GitHub 判定 `CLEAN / MERGEABLE`，以 merge commit `21e3f755cb403d5c0fb632cd91676dcee3071753` 合并到 `main`。
+- 合并后的 clean `main` 完成最终 Mac 验收：轻量全套 103 tests 通过；Stage 3 Policy/driver/aggregator 相关 `py_compile` 通过；两套 CLI help 与 fresh import 不加载 torch；冻结 manifest SHA-256 重算为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`；`git diff --check` 通过。
+- 远端 `main` 精确为 `21e3f755cb403d5c0fb632cd91676dcee3071753`，没有 open PR，GitHub keyring 登录正常。Mac 可完成的 Stage 3 实现、测试、raw 和 aggregation 证据链至此全部交付；唯一下一门槛切换为 Windows WSL2 上 FCFS 与 `prompt-length-v1` 各一次真实 CUDA smoke。
