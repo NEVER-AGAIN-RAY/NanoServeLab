@@ -6,7 +6,10 @@ import unittest
 from types import SimpleNamespace
 
 from nanovllm.engine.scheduler import Scheduler
-from nanovllm.engine.scheduling_policy import FCFS_POLICY
+from nanovllm.engine.scheduling_policy import (
+    FCFS_POLICY,
+    PROMPT_LENGTH_POLICY,
+)
 from nanovllm.engine.sequence import Sequence, SequenceStatus
 from nanovllm.sampling_params import SamplingParams
 
@@ -137,6 +140,82 @@ class SchedulerFcfsOrderTest(unittest.TestCase):
             "unsupported scheduling_policy 'unknown-v1'",
         ):
             self.make_scheduler(scheduling_policy="unknown-v1")
+
+    def test_prompt_length_policy_orders_fresh_requests_with_stable_ties(self):
+        scheduler = self.make_scheduler(
+            scheduling_policy=PROMPT_LENGTH_POLICY,
+        )
+        long = self.make_sequence(6, token_base=10)
+        short_first = self.make_sequence(2, token_base=30)
+        medium = self.make_sequence(3, token_base=50)
+        short_second = self.make_sequence(2, token_base=70)
+
+        for seq in (long, short_first, medium, short_second):
+            scheduler.add(seq)
+
+        self.assertEqual(
+            list(scheduler.waiting),
+            [short_first, short_second, medium, long],
+        )
+
+        seqs, is_prefill = scheduler.schedule()
+
+        self.assertTrue(is_prefill)
+        self.assertEqual(seqs, [short_first, short_second, medium])
+        self.assertEqual(
+            [seq.num_scheduled_tokens for seq in seqs],
+            [2, 2, 3],
+        )
+        self.assertEqual(list(scheduler.waiting), [long])
+
+    def test_prompt_length_policy_keeps_chunked_prefill_recovery_first(self):
+        scheduler = self.make_scheduler(
+            max_num_batched_tokens=4,
+            scheduling_policy=PROMPT_LENGTH_POLICY,
+        )
+        chunked = self.make_sequence(6, token_base=10)
+        scheduler.add(chunked)
+        seqs, is_prefill = scheduler.schedule()
+        scheduler.postprocess(seqs, [100], is_prefill)
+        self.assertTrue(chunked.block_table)
+        self.assertEqual(chunked.num_cached_tokens, 4)
+
+        short = self.make_sequence(2, token_base=30)
+        medium = self.make_sequence(3, token_base=50)
+        scheduler.add(medium)
+        scheduler.add(short)
+
+        self.assertEqual(
+            list(scheduler.waiting),
+            [chunked, short, medium],
+        )
+
+    def test_prompt_length_policy_keeps_preempted_recovery_first(self):
+        scheduler = self.make_scheduler(
+            scheduling_policy=PROMPT_LENGTH_POLICY,
+        )
+        medium = self.make_sequence(3, token_base=30)
+        long = self.make_sequence(6, token_base=50)
+        scheduler.add(long)
+        scheduler.add(medium)
+
+        victim = self.make_sequence(4, token_base=10)
+        scheduler.block_manager.allocate(victim, num_cached_blocks=0)
+        victim.num_cached_tokens = 4
+        victim.append_token(100)
+        victim.status = SequenceStatus.RUNNING
+        victim.is_prefill = False
+        scheduler.preempt(victim)
+
+        shortest = self.make_sequence(1, token_base=80)
+        scheduler.add(shortest)
+
+        self.assertEqual(
+            list(scheduler.waiting),
+            [victim, shortest, medium, long],
+        )
+        self.assertEqual(victim.block_table, [])
+        self.assertGreater(victim.num_completion_tokens, 0)
 
     def test_unallocatable_waiting_head_is_not_bypassed(self):
         scheduler = self.make_scheduler(num_kvcache_blocks=2)

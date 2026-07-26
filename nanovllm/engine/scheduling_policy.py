@@ -4,7 +4,11 @@ from __future__ import annotations
 
 
 FCFS_POLICY = "fcfs-v1"
-SUPPORTED_SCHEDULING_POLICIES = (FCFS_POLICY,)
+PROMPT_LENGTH_POLICY = "prompt-length-v1"
+SUPPORTED_SCHEDULING_POLICIES = (
+    FCFS_POLICY,
+    PROMPT_LENGTH_POLICY,
+)
 
 
 def normalize_scheduling_policy(policy: str) -> str:
