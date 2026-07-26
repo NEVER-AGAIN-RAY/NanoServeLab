@@ -139,3 +139,4 @@
 - 在后续 `fcfs-v1` 多请求特征测试设计中发现合约技术误述：`Scheduler.schedule()` 通过 `running.extendleft(reversed(scheduled_seqs))` 把入选请求恢复到队首；当 running 数量超过 `max_num_seqs` 时，同一队首批次会继续被选择，队尾不会 round-robin。当前独立分支 `codex/stage3-fcfs-order-tests` 纠正合约并用测试固定真实行为，不修改 Scheduler。
 - 新增 `tests/test_scheduler_fcfs_order.py` 的 4 个确定性 CPU 特征测试：固定 waiting 到达顺序与 Chunked Prefill 队首、不可分配队首不绕过后续可分配请求、waiting Prefill 相对 running Decode 的 step 级优先、running 稳定队首批次以及 KV 压力下 running 队尾抢占回 waiting 队首。
 - 普通 Mac `unittest` 因项目未安装完整运行时依赖而在 import 阶段分别缺少 `tqdm`、`xxhash`；没有为此运行根目录 `uv sync` 或安装 CUDA-only 依赖。按既有轻量 package bootstrap 注入包 namespace 和最小 hash/array 替身后，新增 4 tests 与全套 72 tests 全部通过；新增测试 `py_compile` 和 `git diff --check` 通过。替身只服务 Scheduler CPU 语义，真实依赖与 CUDA 路径仍留给后续 WSL2 门槛。
+- 特征测试与合约纠正以提交 `5c9f9992b57f71797392bacfbef86429bafda861` 推送并创建 Draft [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24)，目标为 `main`，初始范围为 4 个文件、223 additions / 28 deletions；没有运行 CUDA、修改 Scheduler 或向 `upstream` 写入。

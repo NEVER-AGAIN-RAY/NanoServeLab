@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，阶段 3 尚未实现策略
-- 当前主线：`fcfs-v1` 多请求特征测试和 running 稳定队首批次语义纠正已完成，Mac 轻量全套 72 tests 通过；下一门槛是发布并合并本测试切片，不修改 Scheduler
+- 当前主线：`fcfs-v1` 多请求特征测试和 running 稳定队首批次语义纠正已完成，Mac 轻量全套 72 tests 通过；Draft [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24) 等待最终审查，不修改 Scheduler
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -174,7 +174,7 @@
 
 ## 立即下一步
 
-1. 提交、发布并合并纯特征测试/文档纠正 PR。
+1. 完成 Draft PR #24 的远端差异、评论、review、检查和可合并性审查并合并。
 2. 新开分支增加显式 Policy 入口，默认仍为 `fcfs-v1`。
 3. Policy 默认等价门槛通过后，再实现 `prompt-length-v1`。
 
