@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，首个候选策略已实现但尚未做 WSL2/CUDA 对照
-- 当前主线：PR #25 已合并；`prompt-length-v1` 已在独立分支按 recovery-prefix 后 Prompt 长度稳定插入实现，Mac 轻量全套 77 tests 通过，下一门槛是独立 PR 审查
+- 当前主线：PR #25 已合并；`prompt-length-v1` 已在 Draft [PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 按 recovery-prefix 后 Prompt 长度稳定插入实现，Mac 轻量全套 77 tests 通过，下一门槛是远端审查
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -181,7 +181,7 @@
 
 ## 立即下一步
 
-1. 提交、发布并合并 `prompt-length-v1` 独立 PR。
+1. 完成 Draft PR #26 的远端审查并合并 `prompt-length-v1`。
 2. 新开分支建立阶段 3 raw/schema/driver Policy 身份与拒绝混组校验。
 3. 完成离线聚合对照支持后，才进入 WSL2/CUDA smoke。
 
