@@ -148,3 +148,7 @@
 - 从该合并提交创建独立分支 `codex/stage3-prompt-length-policy`：将 `prompt-length-v1` 加入支持集合；`Scheduler.add()` 在 FCFS 下仍直接 append，在长度策略下先跳过 recovery prefix，再按 `num_prompt_tokens` 升序稳定插入 fresh 请求。recovery 由仍有 `block_table` 的 Chunked Prefill 请求或已有 Completion Token 的被抢占请求识别；`schedule()`、Decode、抢占、KV 和完成路径未改。
 - 新增长度顺序/稳定并列、Chunked Prefill recovery、被抢占 recovery 三个策略测试。相关 9 tests 与 Mac 轻量全套 77 tests 全部通过，策略模块、Scheduler 和测试 `py_compile` 通过；没有构造真实 LLM、运行 CUDA 或产生性能结论。
 - `prompt-length-v1` 以提交 `77b2bf6f76e51769b99484920715a63041f1c22d` 推送并创建 Draft [PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26)，目标为 `main`，初始范围为 5 个文件、142 additions / 24 deletions；没有运行 CUDA、修改 KV/Decode 或向 `upstream` 写入。
+- PR #26 最终为 5 个预期文件、2 个提交，无评论、review 或 CI check；转 Ready 后 GitHub 判定 `CLEAN / MERGEABLE`，以 merge commit `0c80123a3078e59e1a405a417a330efe79c12bbd` 合并到 `main`。
+- 从该合并提交创建独立分支 `codex/stage3-scheduling-driver`。新增 `research/stage3_scheduling_driver.py`、`docs/experiments/stage3-scheduling-raw.md` 与 12 个 CPU 合约测试；Stage 3 外层复用 Stage 2 saturated admission 核心，不修改阶段 2 raw/schema/aggregator。
+- raw 使用独立 schema v2 和 `NSL-S3-SCHED-v1` 身份，记录 comparison group、Policy definition v1/parameters、`NSL-S2-SAT-v1` workload ID，以及 requested/actual Scheduler Policy。缺失 commit、dirty worktree、Policy 无法读取或 requested/actual 不一致均在 warmup 前失败。
+- writer 在创建文件前完成严格身份检查和有限 JSON 序列化，再使用独占创建；同一路径存在时不覆盖原字节。Mac Stage 3 定向 12 tests、轻量全套 89 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过；没有运行 CUDA、真实 LLM 或产生性能结论。
