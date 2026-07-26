@@ -154,3 +154,7 @@
 - writer 在创建文件前完成严格身份检查和有限 JSON 序列化，再使用独占创建；同一路径存在时不覆盖原字节。Mac Stage 3 定向 12 tests、轻量全套 89 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过；没有运行 CUDA、真实 LLM 或产生性能结论。
 - Stage 3 raw driver 以提交 `19e55788813a813eb651301d157fd3025751e797` 推送并创建 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，目标为 `main`，初始范围为 5 个文件、1,206 additions / 21 deletions；没有向 `upstream` 写入。
 - PR #27 本地第二轮审查补强 mismatch 证据：请求 Policy 与实际 Scheduler 不同时仍在 warmup 前失败，但 raw 的 `engine.scheduling_policy` 保留已经读到的实际值，`policy.runtime_verified` 保持 false；Mac 全套 89 tests 复验通过。
+- PR #27 最终为 5 个预期文件、3 个提交，无评论、review 或 CI check；转 Ready 后 GitHub 判定 `CLEAN / MERGEABLE`，以 merge commit `6b9b4bb1b2478c7ddd05f64b0587a02b053b935d` 合并到 `main`。
+- 从该合并提交创建独立分支 `codex/stage3-scheduling-aggregate`，新增 `NSL-S3-AGG-v1` 严格离线对照：只接受六份显式 schema v2 raw，验证 Policy/run 矩阵、comparison group、commit/environment/model/fixed engine/workload 和固定 UTC 创建顺序；Policy requested/actual 是唯一排除的 engine 自变量。
+- 聚合器复用 Stage 2 request 指标、nearest-rank、sample SD 和独占 writer；按 Policy 输出 outcome/invalid/unmapped、all/short/long 延迟、三次吞吐、最坏请求，以及 candidate−FCFS 差值、5% 吞吐警戒和结构化公平性风险。任一 run 不完整时保留证据但 comparison 无效且吞吐为 null。
+- 对抗性审查补上实际 `created_at_utc` 顺序证明和 Stage 3 aggregate writer 身份校验。新增 aggregation 14 tests；Mac 轻量全套 103 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过。没有运行 CUDA、读取正式 Stage 3 raw 或产生性能结论。
