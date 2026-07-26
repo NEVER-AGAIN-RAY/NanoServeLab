@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，首个候选策略已实现但尚未做 WSL2/CUDA 对照
-- 当前主线：[PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 已合并；独立分支 `codex/stage3-scheduling-driver` 正在建立 schema v2 raw/driver、显式 Policy/对照组身份和独占写入，Mac 轻量全套 89 tests 通过，下一门槛是本切片远端审查
+- 当前主线：[PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 已合并；schema v2 raw/driver、显式 Policy/对照组身份和独占写入已在 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，Mac 轻量全套 89 tests 通过，下一门槛是远端审查
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -137,6 +137,7 @@
 - 从该合并提交创建独立分支 `codex/stage3-scheduling-driver`：新增 Stage 3 schema v2 外层，复用 Stage 2 saturated admission 核心但不修改阶段 2 raw/aggregator；显式记录 `experiment_contract`、`comparison_group`、版本化 Policy 参数、workload ID 与 requested/actual Scheduler Policy。
 - driver 在 warmup 前拒绝缺失 commit、dirty worktree、无法读取 Policy 或请求/实际 Policy 不一致；成功与运行失败 raw 均保留 Stage 3 身份，setup 失败不伪造实际 Policy。JSON 先完整序列化，再以独占创建写入，文件身份与 artifact 的 group/Policy/run number 必须一致。
 - 新增 12 个 Stage 3 driver CPU 合约测试；Mac 轻量全套 89 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 和 `git diff --check` 通过。没有构造真实 LLM、运行 CUDA 或产生策略结果。
+- 上述切片以提交 `19e55788813a813eb651301d157fd3025751e797` 推送并创建 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，目标为 `main`，初始范围为 5 个文件；没有向 `upstream` 写入。
 
 ### 环境与阻塞
 
