@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，阶段 3 尚未实现策略
-- 当前主线：`NSL-S3-SCHED-v1` FCFS 对照与单变量实验合约已起草；下一门槛是项目所有者审阅，审阅前不修改 Scheduler
+- 当前主线：`NSL-S3-SCHED-v1` FCFS 对照与单变量实验合约已由项目所有者授权按默认方向继续，并创建 Draft [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)；下一门槛是完成纯文档审查与合并，合并前不修改 Scheduler
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -122,7 +122,7 @@
 - 标准库逐字段独立复算、相同创建时间重放、拒绝覆盖、raw/aggregate 哈希回验全部通过；aggregate SHA-256 为 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。
 - 正式结果、完整统计、两次命令纠正与结论边界已由 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21) 以 merge commit `77160a7422dca27a763eb44308bb20c11b91a967` 合并。阶段 2 没有剩余代码、实验或结果文档交付项。
 - 阶段 2 完成状态与阶段 3 唯一下一目标由 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22) 收口；该收口只改状态文档，不实现调度策略。
-- 独立分支 `codex/stage3-fcfs-contract` 已起草 `NSL-S3-SCHED-v1`：精确定义 waiting FCFS、running 一 Token 轮转、Prefill 优先、抢占回队首和固定资源机制；第一候选为按 `num_prompt_tokens` 稳定插入的新请求长度策略。合约要求阶段 3 新跑 FCFS 对照、每种策略各 3 个全新进程、显式 Policy ID、长短分组公平性和失败证据保留。本切片只改文档，尚未修改 Scheduler、运行 CUDA 或产生策略结果；下一门槛是项目所有者审阅。
+- 独立分支 `codex/stage3-fcfs-contract` 已起草 `NSL-S3-SCHED-v1`：精确定义 waiting FCFS、running 一 Token 轮转、Prefill 优先、抢占回队首和固定资源机制；第一候选为按 `num_prompt_tokens` 稳定插入的新请求长度策略。合约要求阶段 3 新跑 FCFS 对照、每种策略各 3 个全新进程、显式 Policy ID、长短分组公平性和失败证据保留。本切片只改文档，尚未修改 Scheduler、运行 CUDA 或产生策略结果；项目所有者已授权按默认方向继续，Draft [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23) 等待最终纯文档审查。
 
 ### 环境与阻塞
 
@@ -143,7 +143,7 @@
 
 ### 为什么现在做
 
-阶段 2 已经建立可复现的 mixed-workload FCFS 参考、请求级延迟、吞吐和尾延迟证据。`NSL-S3-SCHED-v1` 草案现已把 FCFS 身份、单变量边界、重复运行与公平性规则写成可审阅合约；只有项目所有者确认这些研究取舍后，才能安全进入行为测试和策略实现。
+阶段 2 已经建立可复现的 mixed-workload FCFS 参考、请求级延迟、吞吐和尾延迟证据。`NSL-S3-SCHED-v1` 草案现已把 FCFS 身份、单变量边界、重复运行与公平性规则写成可审阅合约；项目所有者已授权采用默认研究取舍，当前只剩纯文档 PR 审查与合并门槛。
 
 ### 草案已经固定
 
@@ -165,15 +165,15 @@
 
 ### 完成标准
 
-- 项目所有者逐项确认 `NSL-S3-SCHED-v1` 的 baseline 身份、长度排序键、重复顺序、公平性和结论规则；
+- 项目所有者授权采用 `NSL-S3-SCHED-v1` 的 baseline 身份、长度排序键、重复顺序、公平性和结论规则；
 - 文档链接、术语、源码映射和阶段 2 固定事实核对通过；
 - 合约以独立纯文档 PR 合并；
 - 合并后唯一下一切片改为补齐 `fcfs-v1` 多请求顺序测试，仍先不改变 Scheduler 行为。
 
 ## 立即下一步
 
-1. 项目所有者审阅 `docs/experiments/stage3-scheduling-contract.md`，确认默认研究取舍。
-2. 审阅通过后完成纯文档验证、提交和 PR；本 PR 不写策略代码。
+1. 完成 Draft PR #23 的远端差异、评论、review、检查和可合并性审查；本 PR 不写策略代码。
+2. 审查通过后转 Ready 并合并。
 3. 合约合并后，新开分支补 `fcfs-v1` 多请求顺序测试，再进入显式 Policy 入口。
 
 ## 已推迟、当前不决策

@@ -134,4 +134,4 @@
 - 合约将现有 `fcfs-v1` 精确定义为 waiting 队首准入、running 一 Token 稳定轮转，并保留 Prefill 优先、Chunked Prefill、Prefix Cache、资源预算以及抢占回 waiting 队首等不变量；明确它不是串行完成式 FCFS。
 - 第一候选 `prompt-length-v1` 只允许按 `num_prompt_tokens` 改变新到达请求在 waiting 中的稳定插入位置；相同长度保持到达顺序，不动态重排已开始 Chunked Prefill 或被抢占请求，不改变 Decode、抢占、KV 或完成语义。
 - 阶段 2 mixed baseline 只作为历史锚点；阶段 3 正式对照必须在同一 clean commit 与环境下显式记录 Policy ID，并为 FCFS 和 Candidate 各运行 3 个全新进程。合约固定复用 `NSL-S2-SAT-v1`，保留 all/short/long 指标、最坏等待与尾延迟证据，不引入复杂公平性综合分数。
-- 项目所有者授权按上述默认方向继续；精确合约仍需逐项审阅后才可合并。下一门槛是审阅 `NSL-S3-SCHED-v1`，随后用独立切片补齐 FCFS 多请求顺序测试，不在当前文档 PR 实现策略。
+- 项目所有者授权按上述默认方向继续。合约以提交 `f5acb600ebd946dfe8f9716e5c0aea2282641b44` 推送并创建 Draft [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)，目标为 `main`，初始范围为 3 个纯文档文件、357 additions / 17 deletions；没有向 `upstream` 写入。下一门槛是完成 PR 远端审查与合并，随后用独立切片补齐 FCFS 多请求顺序测试，不在当前文档 PR 实现策略。
