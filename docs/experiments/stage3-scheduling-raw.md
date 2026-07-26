@@ -80,7 +80,7 @@ raw 继续记录 Stage 2 已固定的：
 
 raw 禁止写入 Queue Time、TTFT、TPOT、E2E、吞吐、percentile 或 elapsed 等派生字段。
 
-运行时失败仍保留已经产生的 warmup、映射和请求时间戳。setup 或身份校验失败保留可得的配置和 error，但 `policy.runtime_verified=false`，且不能伪造实际 Scheduler Policy。
+运行时失败仍保留已经产生的 warmup、映射和请求时间戳。setup 或身份校验失败保留可得的配置和 error，但 `policy.runtime_verified=false`，且不能伪造实际 Scheduler Policy；若 mismatch 检查已经成功读到实际 Policy，则原样记录该值作为失败证据。
 
 ## 防覆盖规则
 

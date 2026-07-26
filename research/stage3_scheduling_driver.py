@@ -165,6 +165,7 @@ def _failed_stage3_artifact(
     model: dict[str, Any],
     engine_metadata: dict[str, Any],
     recorder: RecorderLike | None = None,
+    actual_policy: str | None = None,
 ) -> dict[str, Any]:
     state = SaturatedRunState(
         requests=requests,
@@ -187,7 +188,7 @@ def _failed_stage3_artifact(
         comparison_group=comparison_group,
         policy=policy,
         runtime_verified=False,
-        actual_policy=None,
+        actual_policy=actual_policy,
     )
 
 
@@ -308,6 +309,7 @@ def run_stage3_scheduling_admission(
     )
     fixed_engine_metadata["requested_scheduling_policy"] = normalized_policy
 
+    actual_policy: str | None = None
     try:
         _validate_repository(repository_metadata)
         actual_policy = _runtime_policy(engine)
@@ -330,6 +332,7 @@ def run_stage3_scheduling_admission(
             model=model_metadata,
             engine_metadata=fixed_engine_metadata,
             recorder=recorder,
+            actual_policy=actual_policy,
         )
         if write_artifact and output_dir is not None:
             write_stage3_scheduling_artifact(

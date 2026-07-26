@@ -153,3 +153,4 @@
 - raw 使用独立 schema v2 和 `NSL-S3-SCHED-v1` 身份，记录 comparison group、Policy definition v1/parameters、`NSL-S2-SAT-v1` workload ID，以及 requested/actual Scheduler Policy。缺失 commit、dirty worktree、Policy 无法读取或 requested/actual 不一致均在 warmup 前失败。
 - writer 在创建文件前完成严格身份检查和有限 JSON 序列化，再使用独占创建；同一路径存在时不覆盖原字节。Mac Stage 3 定向 12 tests、轻量全套 89 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过；没有运行 CUDA、真实 LLM 或产生性能结论。
 - Stage 3 raw driver 以提交 `19e55788813a813eb651301d157fd3025751e797` 推送并创建 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，目标为 `main`，初始范围为 5 个文件、1,206 additions / 21 deletions；没有向 `upstream` 写入。
+- PR #27 本地第二轮审查补强 mismatch 证据：请求 Policy 与实际 Scheduler 不同时仍在 warmup 前失败，但 raw 的 `engine.scheduling_policy` 保留已经读到的实际值，`policy.runtime_verified` 保持 false；Mac 全套 89 tests 复验通过。

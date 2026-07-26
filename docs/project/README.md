@@ -135,7 +135,7 @@
 - 分支 `codex/stage3-prompt-length-policy` 增加 `prompt-length-v1`：fresh waiting 请求在 recovery prefix 后按 `num_prompt_tokens` 升序稳定插入；相同长度保持到达顺序，Chunked Prefill 和被抢占请求保持恢复优先。只修改策略常量和 `Scheduler.add()` 插入路径，不改 `schedule()`、Decode、抢占或 KV；3 个新策略边界测试、相关 9 tests、Mac 全套 77 tests 与 `py_compile` 通过。
 - [PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 经远端范围与 `CLEAN / MERGEABLE` 核对后，以 merge commit `0c80123a3078e59e1a405a417a330efe79c12bbd` 合并；`prompt-length-v1` 第一候选策略进入 `main`。
 - 从该合并提交创建独立分支 `codex/stage3-scheduling-driver`：新增 Stage 3 schema v2 外层，复用 Stage 2 saturated admission 核心但不修改阶段 2 raw/aggregator；显式记录 `experiment_contract`、`comparison_group`、版本化 Policy 参数、workload ID 与 requested/actual Scheduler Policy。
-- driver 在 warmup 前拒绝缺失 commit、dirty worktree、无法读取 Policy 或请求/实际 Policy 不一致；成功与运行失败 raw 均保留 Stage 3 身份，setup 失败不伪造实际 Policy。JSON 先完整序列化，再以独占创建写入，文件身份与 artifact 的 group/Policy/run number 必须一致。
+- driver 在 warmup 前拒绝缺失 commit、dirty worktree、无法读取 Policy 或请求/实际 Policy 不一致；成功与运行失败 raw 均保留 Stage 3 身份，setup 失败不伪造实际 Policy，mismatch 失败则保留已经读到的实际 Policy。JSON 先完整序列化，再以独占创建写入，文件身份与 artifact 的 group/Policy/run number 必须一致。
 - 新增 12 个 Stage 3 driver CPU 合约测试；Mac 轻量全套 89 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 和 `git diff --check` 通过。没有构造真实 LLM、运行 CUDA 或产生策略结果。
 - 上述切片以提交 `19e55788813a813eb651301d157fd3025751e797` 推送并创建 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，目标为 `main`，初始范围为 5 个文件；没有向 `upstream` 写入。
 

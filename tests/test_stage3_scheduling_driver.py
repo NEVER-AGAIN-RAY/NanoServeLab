@@ -208,7 +208,10 @@ class Stage3SchedulingDriverTest(unittest.TestCase):
         self.assertEqual(artifact["error"]["type"], "Stage3SchedulingDriverError")
         self.assertIn("does not match", artifact["error"]["message"])
         self.assertFalse(artifact["policy"]["runtime_verified"])
-        self.assertIsNone(artifact["engine"]["scheduling_policy"])
+        self.assertEqual(
+            artifact["engine"]["scheduling_policy"],
+            PROMPT_LENGTH_POLICY,
+        )
         self.assertEqual(engine.generate_count, 0)
         self.assertEqual(engine.add_count, 0)
 
