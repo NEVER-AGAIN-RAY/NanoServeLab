@@ -158,3 +158,4 @@
 - 从该合并提交创建独立分支 `codex/stage3-scheduling-aggregate`，新增 `NSL-S3-AGG-v1` 严格离线对照：只接受六份显式 schema v2 raw，验证 Policy/run 矩阵、comparison group、commit/environment/model/fixed engine/workload 和固定 UTC 创建顺序；Policy requested/actual 是唯一排除的 engine 自变量。
 - 聚合器复用 Stage 2 request 指标、nearest-rank、sample SD 和独占 writer；按 Policy 输出 outcome/invalid/unmapped、all/short/long 延迟、三次吞吐、最坏请求，以及 candidate−FCFS 差值、5% 吞吐警戒和结构化公平性风险。任一 run 不完整时保留证据但 comparison 无效且吞吐为 null。
 - 对抗性审查补上实际 `created_at_utc` 顺序证明和 Stage 3 aggregate writer 身份校验。新增 aggregation 14 tests；Mac 轻量全套 103 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过。没有运行 CUDA、读取正式 Stage 3 raw 或产生性能结论。
+- Stage 3 aggregation 以提交 `62938a9fd273a4a1f8daff5fd360295970b6088e` 推送并创建 Draft [PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28)，目标为 `main`，初始范围为 5 个文件、1,643 additions / 21 deletions；没有向 `upstream` 写入。

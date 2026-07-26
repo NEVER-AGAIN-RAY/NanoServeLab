@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，首个候选策略已实现但尚未做 WSL2/CUDA 对照
-- 当前主线：[PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27) 已合并；独立分支 `codex/stage3-scheduling-aggregate` 正在实现严格六 run Policy 对照、差值与警戒线，Mac 轻量全套 103 tests 通过，下一门槛是本切片远端审查
+- 当前主线：[PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27) 已合并；严格六 run Policy 对照、差值与警戒线已在 Draft [PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28)，Mac 轻量全套 103 tests 通过，下一门槛是远端审查
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -144,6 +144,7 @@
 - 从该合并提交创建 `codex/stage3-scheduling-aggregate`：只读恰好六份 schema v2 raw，严格要求 FCFS/Candidate 各 run 1–3、同 group/commit/environment/model/fixed engine/workload，并用 UTC 创建时间验证固定执行顺序。Policy 字段是唯一排除的 engine 自变量。
 - `NSL-S3-AGG-v1` 为每个 Policy 输出 outcome/invalid/unmapped、all/short/long 延迟、三次吞吐和最坏请求定位；统一计算 candidate−FCFS 绝对/百分比差值，并结构化报告 5% 吞吐退化与完成率/尾延迟公平性风险。任一 run 不满足 64 请求、5,632 Token、CUDA 同步和完整时间事实时保留证据但 comparison 无效、吞吐为 null。
 - 新增 14 个 Stage 3 aggregation CPU 合约测试；Mac 轻量全套 103 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 与 `git diff --check` 通过。没有读取正式 Stage 3 raw、运行 CUDA 或产生策略性能结论。
+- 上述切片以提交 `62938a9fd273a4a1f8daff5fd360295970b6088e` 推送并创建 Draft [PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28)，目标为 `main`，初始范围为 5 个文件；没有向 `upstream` 写入。
 
 ### 环境与阻塞
 
