@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；所有 Mac 侧代码、raw/aggregation 合约和 CPU 验证已完成，尚未做 WSL2/CUDA 对照
-- 当前主线：[PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28) 已合并；合并后 clean `main` 的 103 tests、语法、两套 CLI/fresh import 和 manifest 复验全部通过，下一门槛必须连接 Windows WSL2
+- 当前主线：[PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28) 已合并；合并后 clean `main` 的 103 tests、语法、两套 CLI/fresh import 和 manifest 复验全部通过；纯文档收口在 Draft [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29)，合并后下一门槛必须连接 Windows WSL2
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -148,6 +148,7 @@
 - 上述切片以提交 `62938a9fd273a4a1f8daff5fd360295970b6088e` 推送并创建 Draft [PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28)，目标为 `main`，初始范围为 5 个文件；没有向 `upstream` 写入。
 - PR #28 经第二轮边界审查和远端范围核对后，GitHub 为 `CLEAN / MERGEABLE`、无评论/review/check，以 merge commit `21e3f755cb403d5c0fb632cd91676dcee3071753` 合并到 `main`。
 - 合并后的 clean `main` 再次通过 Mac 轻量全套 103 tests、Stage 3 相关 `py_compile`、raw driver/aggregator CLI help、fresh import 不加载 torch、冻结 manifest SHA-256 重算和 `git diff --check`；远端没有遗留 open PR，GitHub keyring 登录正常。Mac 可完成的阶段 3 工作至此全部交付。
+- 最终状态切换以提交 `8668625164bb0a84c2c8cd27d80eedaac6f3204e` 创建纯文档 Draft [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29)，只把唯一下一目标改为 WSL2 双 Policy CUDA smoke，没有代码、CUDA、raw 或结果改动。
 
 ### 环境与阻塞
 
