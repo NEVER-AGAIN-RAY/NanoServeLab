@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，首个候选策略已实现但尚未做 WSL2/CUDA 对照
-- 当前主线：PR #25 已合并；`prompt-length-v1` 已在 Draft [PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 按 recovery-prefix 后 Prompt 长度稳定插入实现，Mac 轻量全套 77 tests 通过，下一门槛是远端审查
+- 当前主线：[PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 已合并；schema v2 raw/driver、显式 Policy/对照组身份和独占写入已在 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，Mac 轻量全套 89 tests 通过，下一门槛是远端审查
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -34,6 +34,7 @@
 | `docs/experiments/aggregation.md` | 离线 schema v1 aggregation 的兼容键、record 分类、统计规则与输出 schema | 聚合合约变化时更新；不承载正式 raw 数字 |
 | `docs/experiments/saturated-aggregation-results-2026-07-23.md` | 三次正式 raw 的 aggregate、独立复算、完整统计、哈希与结论边界 | 固定阶段 2 派生结果；不回填 raw，不作为调度策略提升结论 |
 | `docs/experiments/stage3-scheduling-contract.md` | 阶段 3 的 FCFS 身份、单变量策略矩阵、重复运行、指标/公平性和证据边界 | 固定 `NSL-S3-SCHED-v1`；策略定义或实验规则改变时必须版本化 |
+| `docs/experiments/stage3-scheduling-raw.md` | 阶段 3 单次运行 CLI、schema v2 Policy/对照组身份、失败证据与防覆盖行为 | raw 合约变化时更新；不写派生指标或正式结果 |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
 | `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
@@ -87,9 +88,10 @@
 | 阶段 2 saturated admission driver | 已合并 | [PR #17](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/17)，merge `f4daf0e` | schema v1 writer、Mac 47 tests、WSL2/CUDA smoke；后续正式 `n=3` 已完成 |
 | 阶段 2 offline aggregation | 已合并 | [PR #20](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/20)，merge `a8c2efc` | schema v1 只读汇总、严格输入/输出边界、Mac 68 tests；正式结果另行记录 |
 | 阶段 2 formal aggregation results | 已合并 | [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21)，merge `77160a7` | 192/192 valid、独立复算、派生证据哈希与完整结论边界；阶段 2 正式结果 |
-| 阶段 3 FCFS 与单变量实验合约 | 已合并 | [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)，merge `5cf7beb` | 固定 `NSL-S3-SCHED-v1`；后续特征测试发现 running 应表述为稳定队首批次而非轮转，当前切片正在纠正 |
+| 阶段 3 FCFS 与单变量实验合约 | 已合并 | [PR #23](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/23)，merge `5cf7beb` | 固定 `NSL-S3-SCHED-v1`；后续发现的 running 表述错误已由 PR #24 纠正 |
 | 阶段 3 FCFS 多请求特征测试 | 已合并 | [PR #24](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/24)，merge `30beb3d` | 4 个新测试固定 waiting、Prefill、running 稳定队首批次和队尾抢占；Mac 全套 72 tests |
 | 阶段 3 显式 Policy 入口 | 已合并 | [PR #25](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/25)，merge `e0a69ab` | Config/Scheduler 显式 `fcfs-v1` 身份、默认等价和未知值拒绝；Mac 全套 74 tests |
+| 阶段 3 Prompt 长度策略 | 已合并 | [PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26)，merge `0c80123` | recovery prefix 后按 Prompt 长度稳定插入；Mac 全套 77 tests |
 
 ### 阶段 1 最终交付
 
@@ -131,6 +133,11 @@
 - 分支 `codex/stage3-policy-entry` 新增轻量 `scheduling_policy` 身份层：Config 增加默认 `fcfs-v1` 字段，Scheduler 对显式值和旧 fake config 缺省值统一规范化；未知策略在调度前抛 `ValueError`。显式和隐式 FCFS 首批调度等价测试通过，尚无长度排序分支；Mac 新增相关测试 6 个、全套 74 tests 与 `py_compile` 通过。
 - [PR #25](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/25) 经远端范围与 `CLEAN / MERGEABLE` 核对后，以 merge commit `e0a69abe1eceac55d3188a2c52f652bc116150b2` 合并；显式 Policy 入口进入 `main`。
 - 分支 `codex/stage3-prompt-length-policy` 增加 `prompt-length-v1`：fresh waiting 请求在 recovery prefix 后按 `num_prompt_tokens` 升序稳定插入；相同长度保持到达顺序，Chunked Prefill 和被抢占请求保持恢复优先。只修改策略常量和 `Scheduler.add()` 插入路径，不改 `schedule()`、Decode、抢占或 KV；3 个新策略边界测试、相关 9 tests、Mac 全套 77 tests 与 `py_compile` 通过。
+- [PR #26](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/26) 经远端范围与 `CLEAN / MERGEABLE` 核对后，以 merge commit `0c80123a3078e59e1a405a417a330efe79c12bbd` 合并；`prompt-length-v1` 第一候选策略进入 `main`。
+- 从该合并提交创建独立分支 `codex/stage3-scheduling-driver`：新增 Stage 3 schema v2 外层，复用 Stage 2 saturated admission 核心但不修改阶段 2 raw/aggregator；显式记录 `experiment_contract`、`comparison_group`、版本化 Policy 参数、workload ID 与 requested/actual Scheduler Policy。
+- driver 在 warmup 前拒绝缺失 commit、dirty worktree、无法读取 Policy 或请求/实际 Policy 不一致；成功与运行失败 raw 均保留 Stage 3 身份，setup 失败不伪造实际 Policy，mismatch 失败则保留已经读到的实际 Policy。JSON 先完整序列化，再以独占创建写入，文件身份与 artifact 的 group/Policy/run number 必须一致。
+- 新增 12 个 Stage 3 driver CPU 合约测试；Mac 轻量全套 89 tests、相关 `py_compile`、fresh import/CLI help 不加载 torch 和 `git diff --check` 通过。没有构造真实 LLM、运行 CUDA 或产生策略结果。
+- 上述切片以提交 `19e55788813a813eb651301d157fd3025751e797` 推送并创建 Draft [PR #27](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/27)，目标为 `main`，初始范围为 5 个文件；没有向 `upstream` 写入。
 
 ### 环境与阻塞
 
@@ -147,43 +154,46 @@
 
 ### 目标名称
 
-**阶段 3 第四切片：实现 `prompt-length-v1` waiting 稳定插入**
+**阶段 3 第五切片：建立 raw schema v2 与调度对照 driver**
 
 ### 为什么现在做
 
-显式 Policy 入口已经进入 `main`。第一候选策略只允许改变 fresh waiting 请求的初始顺序；恢复中的 Chunked Prefill 与被抢占请求不能被新请求越过，避免把恢复语义、Decode 或 KV 行为同时变成实验变量。
+FCFS 与 `prompt-length-v1` 已使用同一个显式入口进入 `main`。正式对照前必须让每份 raw 能唯一恢复 Policy、参数、workload、commit 和六进程对照组，并保证请求 Policy 与真实 Scheduler 行为一致；阶段 2 schema v1 不包含这些身份，不能直接混用或静默扩展。
 
 ### 本轮实现
 
-- `prompt-length-v1` 加入合法 Policy 集合；
-- `fcfs-v1` 的 `waiting.append()` 路径保持不变；
-- recovery prefix 由存在 `block_table` 的 Chunked Prefill 请求或已有 Completion Token 的被抢占请求组成；
-- fresh 请求只在 recovery prefix 之后按 `num_prompt_tokens` 升序插入；
-- 相同 Prompt 长度保持到达顺序；
-- `schedule()`、Decode、抢占、KV 和完成路径不变。
+- 复用已验证的 Stage 2 saturated admission 测量循环；
+- 新增独立 schema v2 与 `NSL-S3-SCHED-v1` 实验身份；
+- 显式写入 comparison group、Policy definition/version/parameters 与 requested/actual Policy；
+- warmup 前验证 clean commit 和真实 Scheduler Policy；
+- 成功、setup 失败与运行失败都保留可审计 raw；
+- writer 使用不可覆盖的独占创建。
 
 ### 明确范围
 
-当前切片只覆盖 waiting 插入策略：
+当前切片只覆盖原始证据入口：
 
-- 不改变 `schedule()`、Decode、抢占、KV Cache、driver、`bench.py` 或冻结 workload；
+- 不改变 Scheduler、Decode、抢占、KV Cache、Stage 2 driver/aggregator、`bench.py` 或冻结 workload；
 - 不实现显式 Priority、Aging 或 Prefix Cache 感知；
 - 不运行 CUDA benchmark；
+- 不在 raw 中计算聚合指标；
 - 不产生性能结论。
 
 ### 完成标准
 
-- fresh 请求长度升序和相同长度稳定性测试通过；
-- Chunked Prefill 与被抢占 recovery prefix 不被新请求越过；
-- 既有 FCFS、Prefill、Decode、抢占和 timing 测试保持通过；
-- Mac 全套轻量测试、语法和 diff 检查通过；
-- 以独立 PR 合并后，下一切片才建立阶段 3 raw/driver Policy 身份。
+- 两种 Policy 的 raw 身份与参数精确、可恢复；
+- 请求 Policy 与实际 Scheduler 不一致时在 warmup 前失败；
+- dirty/missing commit 和非法 group/run number 被拒绝；
+- failed artifact 保留原始证据但不伪造运行时身份；
+- 同一输出路径不可覆盖，artifact 与文件名身份不能分叉；
+- Mac 全套轻量测试、语法、fresh import/CLI 和 diff 检查通过；
+- 以独立 PR 合并后，下一切片才实现离线 Policy 对照 aggregation。
 
 ## 立即下一步
 
-1. 完成 Draft PR #26 的远端审查并合并 `prompt-length-v1`。
-2. 新开分支建立阶段 3 raw/schema/driver Policy 身份与拒绝混组校验。
-3. 完成离线聚合对照支持后，才进入 WSL2/CUDA smoke。
+1. 提交并完成 Stage 3 raw/schema/driver 独立 PR 的远端审查与合并。
+2. 新开分支实现 schema v2 严格 loader、每 Policy 三次聚合与 FCFS/candidate 差值。
+3. 两个本地切片均合并并完成 Mac 全套验证后，才进入 WSL2/CUDA 双 Policy smoke。
 
 ## 已推迟、当前不决策
 
@@ -193,4 +203,4 @@
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在 `prompt-length-v1` 和阶段 3 实验证据链分别合并后再决策，当前不提前实现。
+这些问题在 `prompt-length-v1` 第一轮正式对照和阶段 3 实验证据链收口后再决策，当前不提前实现。
