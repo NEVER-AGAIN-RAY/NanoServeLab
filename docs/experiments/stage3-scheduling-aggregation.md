@@ -54,7 +54,7 @@ FCFS-1 → Candidate-1 → Candidate-2 → FCFS-2 → FCFS-3 → Candidate-3
 - `policy.runtime_verified == true`；
 - `engine.scheduling_policy == policy.id`。
 
-failed raw 可以保留 `runtime_verified=false` 和缺失/不匹配的实际 Policy；聚合器会保留它，但整组 comparison 标为 invalid，不能产生可交付的策略结论。
+兼容键仍完整的 failed raw 可以保留 `runtime_verified=false` 和缺失/不匹配的实际 Policy；聚合器会保留它，但整组 comparison 标为 invalid，不能产生可交付的策略结论。若失败早到 environment、model、fixed engine 或 workload 兼容键本身缺失，聚合器拒绝整组输入，因为已无法证明六次运行属于同一受控环境；原 failed raw 仍单独保留，不会被删除或覆盖。
 
 ## 单 run 有效性
 
