@@ -2,9 +2,9 @@
 
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
-- 最后核对日期：2026-07-23（Asia/Shanghai）
+- 最后核对日期：2026-07-26（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；阶段 2 已完成，阶段 3 尚未实现策略
-- 当前主线：冻结阶段 3 的 FCFS 对照与单变量实验合约；合约审阅前不修改 Scheduler
+- 当前主线：`NSL-S3-SCHED-v1` FCFS 对照与单变量实验合约已起草；下一门槛是项目所有者审阅，审阅前不修改 Scheduler
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -33,6 +33,7 @@
 | `docs/experiments/saturated-results-2026-07-23.md` | 正式三次 `NSL-S2-SAT-v1` raw、独立审计、哈希、双端备份、验证失误与限制 | 固定原始实验事实；聚合结果另行生成，不回填或改写 raw |
 | `docs/experiments/aggregation.md` | 离线 schema v1 aggregation 的兼容键、record 分类、统计规则与输出 schema | 聚合合约变化时更新；不承载正式 raw 数字 |
 | `docs/experiments/saturated-aggregation-results-2026-07-23.md` | 三次正式 raw 的 aggregate、独立复算、完整统计、哈希与结论边界 | 固定阶段 2 派生结果；不回填 raw，不作为调度策略提升结论 |
+| `docs/experiments/stage3-scheduling-contract.md` | 阶段 3 的 FCFS 身份、单变量策略矩阵、重复运行、指标/公平性和证据边界 | 固定 `NSL-S3-SCHED-v1`；策略定义或实验规则改变时必须版本化 |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
 | `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
@@ -121,6 +122,7 @@
 - 标准库逐字段独立复算、相同创建时间重放、拒绝覆盖、raw/aggregate 哈希回验全部通过；aggregate SHA-256 为 `47d31a4074336ab1bf6d2035e09869776847843fb3c33455c473864cd7debbb8`。
 - 正式结果、完整统计、两次命令纠正与结论边界已由 [PR #21](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/21) 以 merge commit `77160a7422dca27a763eb44308bb20c11b91a967` 合并。阶段 2 没有剩余代码、实验或结果文档交付项。
 - 阶段 2 完成状态与阶段 3 唯一下一目标由 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22) 收口；该收口只改状态文档，不实现调度策略。
+- 独立分支 `codex/stage3-fcfs-contract` 已起草 `NSL-S3-SCHED-v1`：精确定义 waiting FCFS、running 一 Token 轮转、Prefill 优先、抢占回队首和固定资源机制；第一候选为按 `num_prompt_tokens` 稳定插入的新请求长度策略。合约要求阶段 3 新跑 FCFS 对照、每种策略各 3 个全新进程、显式 Policy ID、长短分组公平性和失败证据保留。本切片只改文档，尚未修改 Scheduler、运行 CUDA 或产生策略结果；下一门槛是项目所有者审阅。
 
 ### 环境与阻塞
 
@@ -137,22 +139,23 @@
 
 ### 目标名称
 
-**阶段 3 第一切片：冻结 FCFS 对照与调度策略实验合约**
+**阶段 3 第一切片：审阅并冻结 FCFS 对照与调度策略实验合约**
 
 ### 为什么现在做
 
-阶段 2 已经建立可复现的 mixed-workload FCFS 参考、请求级延迟、吞吐和尾延迟证据。进入策略实现前，必须先明确“当前 Scheduler 的 FCFS 对照身份”、一次只改变哪一个排序变量、如何复用冻结 workload、如何报告公平性与负面结果，避免把策略代码和实验定义同时改变。
+阶段 2 已经建立可复现的 mixed-workload FCFS 参考、请求级延迟、吞吐和尾延迟证据。`NSL-S3-SCHED-v1` 草案现已把 FCFS 身份、单变量边界、重复运行与公平性规则写成可审阅合约；只有项目所有者确认这些研究取舍后，才能安全进入行为测试和策略实现。
 
-### 本轮要回答的问题
+### 草案已经固定
 
-- 当前 waiting / running 选择规则中哪些行为构成 FCFS baseline；
-- 阶段 2 的 `NSL-S2-SAT-v1` 结果如何作为阶段 3 对照，哪些条件必须重跑；
-- 长度优先、Priority、Aging 的比较顺序和每次唯一自变量；
-- 吞吐、TTFT、TPOT、E2E、尾延迟与公平性的固定报告规则。
+- `fcfs-v1` 是 waiting 队首准入加 running 一 Token 稳定轮转，不是串行完成式 FCFS；
+- 第一候选 `prompt-length-v1` 只按 `num_prompt_tokens` 改变新到达请求的 waiting 插入位置，相同长度保持到达顺序；
+- 阶段 2 mixed baseline 只作历史锚点；每个候选策略必须在同一阶段 3 代码和环境下新跑 3 次 FCFS 与 3 次 Candidate；
+- 固定复用 `NSL-S2-SAT-v1`、现有指标公式和 all/short/long 分组，不引入复杂公平性综合分数；
+- 阶段 3 raw 必须使用新实验身份并显式记录 Policy ID，不能静默改写阶段 2 schema 或 raw。
 
 ### 明确范围
 
-本门槛只覆盖阶段 3 实验合约：
+当前审阅门槛只覆盖阶段 3 实验合约：
 
 - 不修改 Scheduler、KV Cache、driver、`bench.py` 或冻结 workload；
 - 不提前实现长度优先、Priority、Aging 或 Prefix Cache 感知；
@@ -162,15 +165,16 @@
 
 ### 完成标准
 
-- 新的阶段 3 合约明确 baseline scheduler 身份与不变量；
-- 固定单变量策略比较矩阵、seed/workload/重复进程规则；
-- 固定公平性与已有延迟/吞吐指标的报告方式；
-- 由项目所有者审阅接受后，才拆出第一个最小策略实现切片。
+- 项目所有者逐项确认 `NSL-S3-SCHED-v1` 的 baseline 身份、长度排序键、重复顺序、公平性和结论规则；
+- 文档链接、术语、源码映射和阶段 2 固定事实核对通过；
+- 合约以独立纯文档 PR 合并；
+- 合并后唯一下一切片改为补齐 `fcfs-v1` 多请求顺序测试，仍先不改变 Scheduler 行为。
 
 ## 立即下一步
 
-1. 只读核对当前 Scheduler 的 waiting / running 选择和抢占行为，写阶段 3 FCFS 对照合约。
-2. 项目所有者审阅合约；确认后再选择第一个最小策略实现，不在同一 PR 写策略代码。
+1. 项目所有者审阅 `docs/experiments/stage3-scheduling-contract.md`，确认默认研究取舍。
+2. 审阅通过后完成纯文档验证、提交和 PR；本 PR 不写策略代码。
+3. 合约合并后，新开分支补 `fcfs-v1` 多请求顺序测试，再进入显式 Policy 入口。
 
 ## 已推迟、当前不决策
 
@@ -180,4 +184,4 @@
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。
 
-这些问题在阶段 3 FCFS 对照与单变量实验合约审阅后再分别决策，当前不提前实现。
+这些问题在 `NSL-S3-SCHED-v1` 审阅合并后再分别决策，当前不提前实现。

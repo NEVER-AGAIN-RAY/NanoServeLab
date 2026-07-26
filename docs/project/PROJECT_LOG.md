@@ -127,3 +127,11 @@
 - 阶段 2 至此满足章程退出标准：指标边界及真实 CUDA 事件路径已验证；冻结长短混合 workload 已完成三个独立进程；warmup、measurement、raw 与 aggregation 已分离并有哈希封存和独立复算。阶段结论只确认实验基础完整，不声称调度策略性能提升。
 - 当前阶段切换到阶段 3“调度策略比较”。唯一下一小切片是先冻结 FCFS 对照身份、单变量比较、指标/公平性与重复实验合约；在该合约审阅前不修改 Scheduler 或运行新策略实验。
 - 阶段 2 纯文档收口以提交 `f9c4fd8d4a79b900ee77577a2845655b63ddd62f` 创建 [PR #22](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/22)，基于 PR #21 合并后的 `main` `77160a7`；初始范围为 4 个状态文档，不包含代码或实验产物。
+
+## 2026-07-26
+
+- 从 clean `main` `4a98031` 创建独立分支 `codex/stage3-fcfs-contract`，起草 `docs/experiments/stage3-scheduling-contract.md`；本切片只改文档，没有修改 Scheduler、KV Cache、driver、workload 或阶段 2 raw，也没有运行 CUDA benchmark。
+- 合约将现有 `fcfs-v1` 精确定义为 waiting 队首准入、running 一 Token 稳定轮转，并保留 Prefill 优先、Chunked Prefill、Prefix Cache、资源预算以及抢占回 waiting 队首等不变量；明确它不是串行完成式 FCFS。
+- 第一候选 `prompt-length-v1` 只允许按 `num_prompt_tokens` 改变新到达请求在 waiting 中的稳定插入位置；相同长度保持到达顺序，不动态重排已开始 Chunked Prefill 或被抢占请求，不改变 Decode、抢占、KV 或完成语义。
+- 阶段 2 mixed baseline 只作为历史锚点；阶段 3 正式对照必须在同一 clean commit 与环境下显式记录 Policy ID，并为 FCFS 和 Candidate 各运行 3 个全新进程。合约固定复用 `NSL-S2-SAT-v1`，保留 all/short/long 指标、最坏等待与尾延迟证据，不引入复杂公平性综合分数。
+- 项目所有者授权按上述默认方向继续；精确合约仍需逐项审阅后才可合并。下一门槛是审阅 `NSL-S3-SCHED-v1`，随后用独立切片补齐 FCFS 多请求顺序测试，不在当前文档 PR 实现策略。
