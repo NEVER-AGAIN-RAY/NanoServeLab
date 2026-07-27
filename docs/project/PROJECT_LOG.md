@@ -178,3 +178,11 @@
 - smoke 证据分支经本地差异、证据清单和远端状态复验：3 个预期文档文件，`SHA256SUMS` 六项全部通过且清单自身 SHA-256 仍为 `f6499fb6c63f4e91a57eb1e174f0bd6a8c14f5bdc411556adbd4005b1d9eb4bb`；GitHub 无评论、review 或 check，状态为 `CLEAN / MERGEABLE`。
 - [PR #30](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/30) 已以 merge commit `b330ede84fc3a155299c252749e3e6dbdb19ac96` 合并到 `main`。smoke 身份、原始事实、命令纠正、哈希和“不产生性能结论”的边界正式固定。
 - 从该精确 `main` 创建纯文档分支 `codex/stage3-formal-run-handoff`，把唯一下一目标切换为正式六进程双 Policy 对照；本收口不修改 Scheduler、driver、aggregation 或 workload，也不运行 CUDA 或生成实验结果。
+- [PR #31](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/31) 经远端范围核对为 2 个预期状态文档、无评论/review/check、`CLEAN / MERGEABLE`，以 merge commit `42cb476df358718b548aacc61f11487af2fa6615` 合并。
+- Mac 用完整 Git bundle 将该精确 `main` 同步到 WSL；两端 bundle SHA-256 均为 `0e093d38ec861f68959fdeef9e88d8d2d66494d622fcc5f82b6b3070c9822d70`。WSL 创建 `codex/wsl-stage3-formal-20260727`，Git clean、GPU/CUDA、模型 revision/权重、manifest、最小 CUDA Tensor 和完整 103 tests preflight 通过。
+- 创建此前不存在的 comparison group `prompt-length-20260727-a`，严格按 `FCFS-1 → Candidate-1 → Candidate-2 → FCFS-2 → FCFS-3 → Candidate-3` 启动六个全新进程。六次均一次成功，没有失败、重跑、删除、替换或覆盖。
+- 六份 schema v2 raw 均为 finished、64/64 请求、5,632 actual Output Token、requested/actual Policy 一致、runtime verified、CUDA synchronized、0 unmapped，合计 384/384 finished 与 33,792 Token。逐份时间戳单调且 saturated admission 成立。
+- 整体审计确认固定创建顺序、唯一 run ID，以及 repository/environment/model/fixed engine/workload 兼容键完全相同；6 份 driver log 未发现 traceback、CUDA error、OOM、failed status、NaN 或 Inf。
+- `FCFS-1` 后第一次只读校验一行命令因嵌套引号被 Mac zsh 在 SSH 前拒绝；随后改用独立标准库脚本完成相同校验。该错误未连接 WSL、修改 raw 或触发重跑，并已写入 validation 证据。
+- 6 raw、6 完整 driver log、preflight/tests 和 validation 共 14 项在 WSL 生成 `SHA256SUMS` 后全部通过，再复制到 Mac Git 忽略目录并按同一清单逐项通过；清单自身 SHA-256 为 `04b5570d406a97b9d4ea9e34caba2d85f4b199cd71b5b7aa36eb48ac6bbd708c`。
+- 当前尚未运行 aggregation、计算正式派生指标或产生性能结论。唯一下一目标切换为审阅合并正式 raw 证据，随后才执行 `NSL-S3-AGG-v1`。
