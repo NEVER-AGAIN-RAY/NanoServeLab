@@ -186,3 +186,11 @@
 - `FCFS-1` 后第一次只读校验一行命令因嵌套引号被 Mac zsh 在 SSH 前拒绝；随后改用独立标准库脚本完成相同校验。该错误未连接 WSL、修改 raw 或触发重跑，并已写入 validation 证据。
 - 6 raw、6 完整 driver log、preflight/tests 和 validation 共 14 项在 WSL 生成 `SHA256SUMS` 后全部通过，再复制到 Mac Git 忽略目录并按同一清单逐项通过；清单自身 SHA-256 为 `04b5570d406a97b9d4ea9e34caba2d85f4b199cd71b5b7aa36eb48ac6bbd708c`。
 - 当前尚未运行 aggregation、计算正式派生指标或产生性能结论。唯一下一目标切换为审阅合并正式 raw 证据，随后才执行 `NSL-S3-AGG-v1`。
+- 正式 raw 证据 [PR #32](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/32) 经核对为 3 个预期文档、无评论/review/check、`CLEAN / MERGEABLE`，以 merge commit `2cd80a804fba9a3a29d3405937436916cd19775f` 合并。
+- 从该精确 clean main 创建 `codex/stage3-aggregation-results`。aggregation 前正式 raw 的 14 项 `SHA256SUMS` 再次全部通过；使用六个显式路径对此前不存在的 `aggregate.json` 完成一次唯一正式 `NSL-S3-AGG-v1` 写入，未运行模型、CUDA 或 Scheduler。
+- comparison 有效：两个 Policy 各 192/192 valid finished、0 invalid、0 unmapped。FCFS 三次 Output Token/s 为 743.408639、744.361704、747.531333，mean ± sample SD `745.100559 ± 2.158375`；Candidate 为 751.922572、559.279522、565.091133，`625.431076 ± 109.583382`。
+- Candidate − FCFS 平均 Output Token/s 为 `-16.060850%`；all-request 平均 TTFT、Mean TPOT、E2E 分别为 `+59.534286%`、`+32.442823%`、`+32.896890%`。预声明的 >5% 吞吐退化和公平性警戒均为 true，12 个 fairness item 来自 short/long TTFT、E2E P95/P99/max 上升。
+- 独立标准库脚本重算 384 个请求指标、分组、统计、六个窗口、吞吐和 warnings 全部一致；补充独立校验逐字段验证 96 个 latency delta 与全部 count delta。相同 `created_at_utc` 重放与 aggregate 字节一致，再次写既有输出正确拒绝且哈希不变。
+- aggregate SHA-256 为 `2f1408c4c265962c5ec6a9ebd3628248f63d77f1b0e4662781d8d8d9371a51b7`；aggregate、两份 independent validation、byte-identical replay、overwrite log 和 correction notes 共 6 项清单全部通过，`SHA256SUMS` 自身 SHA-256 为 `c38101abca87100a0bf04bcf30a33aebb3a07def74fdf31489b928e0692d9f67`。
+- 两次命令错误均被保留：首次 CLI help 从 raw 子目录找不到 `research/`，首次 replay 从 `/private/tmp` 缺少仓库 import path；两者都在正式写入或 replay 创建前停止，没有修改 raw/aggregate 或运行 CUDA。
+- 当前结论是 `prompt-length-v1` 在本固定实验中未证明收益且观察到退化/高波动；`n=3` 不支持普遍或统计显著结论。唯一下一目标是审阅合并结果，再做 Queue Time→TTFT/E2E 和 Candidate run 分化的只读机制复盘，不立即增加新策略。
