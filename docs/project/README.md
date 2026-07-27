@@ -2,9 +2,9 @@
 
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
-- 最后核对日期：2026-07-26（Asia/Shanghai）
-- 当前阶段：阶段 3——调度策略比较；所有 Mac 侧代码、raw/aggregation 合约和 CPU 验证已完成，尚未做 WSL2/CUDA 对照
-- 当前主线：[PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28) 已合并；合并后 clean `main` 的 103 tests、语法、两套 CLI/fresh import 和 manifest 复验全部通过；纯文档收口在 Draft [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29)，合并后下一门槛必须连接 Windows WSL2
+- 最后核对日期：2026-07-27（Asia/Shanghai）
+- 当前阶段：阶段 3——调度策略比较；Mac 侧代码与合约已完成，WSL2 双 Policy 真实 CUDA smoke 已通过，尚未运行正式六进程对照
+- 当前主线：[PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29) 已合并；精确 clean `main` `a97ec4d` 的 103 tests、FCFS/Candidate 独立 CUDA smoke、双端 raw/log/hash 复验均通过；当前纯文档切片固定 smoke 证据，合并后才进入正式六进程对照
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -36,6 +36,7 @@
 | `docs/experiments/stage3-scheduling-contract.md` | 阶段 3 的 FCFS 身份、单变量策略矩阵、重复运行、指标/公平性和证据边界 | 固定 `NSL-S3-SCHED-v1`；策略定义或实验规则改变时必须版本化 |
 | `docs/experiments/stage3-scheduling-raw.md` | 阶段 3 单次运行 CLI、schema v2 Policy/对照组身份、失败证据与防覆盖行为 | raw 合约变化时更新；不写派生指标或正式结果 |
 | `docs/experiments/stage3-scheduling-aggregation.md` | 六份 schema v2 raw 的 Policy 分组、兼容键、差值、最坏请求、警戒线与 aggregate 输出 | 固定 `NSL-S3-AGG-v1`；不承载尚未运行的 CUDA 结果 |
+| `docs/experiments/stage3-scheduling-smoke-validation-2026-07-27.md` | FCFS/Candidate 真实 CUDA smoke、Policy 身份、Prefill 波次、raw/log/hash 与限制 | 固定行为门槛；不计入正式六进程对照，不产生性能结论 |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
 | `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
@@ -149,6 +150,9 @@
 - PR #28 经第二轮边界审查和远端范围核对后，GitHub 为 `CLEAN / MERGEABLE`、无评论/review/check，以 merge commit `21e3f755cb403d5c0fb632cd91676dcee3071753` 合并到 `main`。
 - 合并后的 clean `main` 再次通过 Mac 轻量全套 103 tests、Stage 3 相关 `py_compile`、raw driver/aggregator CLI help、fresh import 不加载 torch、冻结 manifest SHA-256 重算和 `git diff --check`；远端没有遗留 open PR，GitHub keyring 登录正常。Mac 可完成的阶段 3 工作至此全部交付。
 - 最终状态切换以提交 `8668625164bb0a84c2c8cd27d80eedaac6f3204e` 创建纯文档 Draft [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29)，只把唯一下一目标改为 WSL2 双 Policy CUDA smoke，没有代码、CUDA、raw 或结果改动。
+- [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29) 已以 merge commit `a97ec4dc7970cae1c51d094f1c1276ecb0f987fc` 合并。WSL 直连 GitHub fetch 未更新引用，改用 Mac 生成并由两端 SHA-256 验证的完整 Git bundle 同步该精确提交；独立分支 `codex/wsl-stage3-smoke-20260727` 运行前后 clean。
+- WSL2 复验 RTX 4060、PyTorch 2.4.0+cu124、CUDA 12.4、Qwen3-0.6B revision/权重和冻结 manifest；完整 103 tests 通过。`fcfs-v1` 与 `prompt-length-v1` 各由一个全新进程完成真实 CUDA smoke，两份 raw 均为 finished、64/64 请求、5,632 Token、requested/actual Policy 一致、`runtime_verified=true`、CUDA synchronized、0 unmapped。
+- 独立时间戳审计确认 saturated admission，并识别第一 Prefill 波次：FCFS 为 45 个请求（34 short / 11 long），Candidate 为 58 个请求（48 short / 10 long），与冻结 Policy 和 16,384 Token 预算一致。完整 raw、driver log、preflight/tests、validation 与 `SHA256SUMS` 已双端复验；清单自身 SHA-256 为 `f6499fb6c63f4e91a57eb1e174f0bd6a8c14f5bdc411556adbd4005b1d9eb4bb`。该 smoke 不计入正式六次实验，不产生性能结论。
 
 ### 环境与阻塞
 
@@ -160,53 +164,52 @@
 - WSL 直连 GitHub fetch 曾在 2026-07-22 及更早轮次失败，当时用 Mac 生成的最小 Git bundle 同步 PR #11 精确提交；**2026-07-23 PR #17 smoke 轮次 WSL 直连 GitHub fetch 已成功**，不再需要 bundle。此前失败事实保留为历史，不表示当前仍阻塞。
 - Mac 的 GitHub 连接已于 2026-07-22 修复并复验：删除未监听的 `127.0.0.1:7897` 全局 Git 代理后，Git HTTPS 与 `gh` 恢复；`ChatGPT Codex Connector` 已安装到 `NEVER-AGAIN-RAY` 且仅授权 NanoServeLab，连接器仓库与 PR 读取通过。完整根因与恢复规则见 `environment/mac.md`。
 - 当前有可复现的参考 baseline、通过真实 CUDA 路径的原始 timing 记录层、已冻结的阶段 2 混合 workload、已合并的 saturated driver、完成独立审计和双端备份的正式 `n=3` raw，以及通过独立复算和哈希封存的正式 aggregation。当前仍无调度策略对照或性能提升结论。
-- 当前唯一阻塞不是代码或 GitHub，而是需要 Windows WSL2 + RTX 4060 验证新增 Policy/driver 的真实 LLM、CUDA Graph、Prefill/Decode 与 GPU 同步路径。Mac 不安装 CUDA-only 依赖，也不冒充该门槛已通过。
+- Windows WSL2 + RTX 4060 的新增 Policy/driver 真实 LLM、CUDA Graph、Prefill/Decode 与 GPU 同步路径已经通过。当前没有代码或 CUDA smoke 阻塞；正式六进程实验必须等待本证据文档审阅合并，并在新的精确 clean `main` 上重新 preflight。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**阶段 3 第七切片：WSL2 双 Policy 真实 CUDA smoke**
+**阶段 3 第八切片：收口双 Policy CUDA smoke 并准备正式六进程对照**
 
 ### 为什么现在做
 
-FCFS、`prompt-length-v1`、schema v2 raw driver 和离线 aggregation 均已进入 `main`，Mac 侧 103 tests 与静态门槛全部通过。下一项未知事实只存在于真实 GPU 路径：Config 能否把两种 Policy 传到真实 Scheduler，两个 Policy 是否都能通过 tokenizer、模型加载、CUDA Graph、saturated Prefill/Decode、timing recorder 和 schema v2 写出。
+真实 GPU 路径已经证明两种 Policy 能完成 tokenizer、模型加载、CUDA Graph、saturated Prefill/Decode、timing recorder 和 schema v2 写出。现在必须先把 smoke 的身份、原始事实、哈希、命令纠正和结论边界固定为可审阅文档；只有该证据切片合并后，才允许在同一个新 clean commit 上启动正式六进程对照。
 
 ### 本轮实现
 
-- 在 WSL2 同步并记录精确 clean `main` commit；
-- 复核 RTX 4060、PyTorch CUDA、模型 revision/权重、manifest 和 GPU 空闲状态；
-- 在既有 WSL `.venv` 跑完整测试；
-- 为 `fcfs-v1` 运行一次独立真实进程 smoke；
-- 为 `prompt-length-v1` 运行一次独立真实进程 smoke；
-- 逐份核对 requested/actual Policy、`runtime_verified`、64 请求、5,632 Output Token、CUDA 双边界同步、无 invalid/unmapped 和 writer 防覆盖；
-- 保存 raw、完整日志与 SHA-256，并备份到 Mac 的 Git 忽略证据目录。
+- 审阅并合并 `stage3-scheduling-smoke-validation-2026-07-27.md` 及同步状态文档；
+- 合并后把 WSL 同步到新的精确 clean `main`，重新核对 GPU、模型、manifest、103 tests 和空输出目录；
+- 为正式实验创建此前不存在的 comparison group 和证据目录；
+- 严格按 `FCFS-1 → Candidate-1 → Candidate-2 → FCFS-2 → FCFS-3 → Candidate-3` 串行运行六个全新进程；
+- 保留任何失败 raw/log，不删除、替换或静默重跑；
+- 六份 raw 完整验证、SHA-256 双端封存后，才进入 `NSL-S3-AGG-v1` 离线聚合。
 
 ### 明确范围
 
-当前切片只覆盖真实 CUDA 行为门槛：
+当前文档切片只收口已经发生的 smoke 事实；后续正式运行只执行已冻结实验：
 
 - 不修改 Scheduler、driver、aggregation、模型参数或冻结 workload；
 - 不实现显式 Priority、Aging 或 Prefix Cache 感知；
-- smoke 使用独立对照组，不计入正式六次实验；
-- 任一 smoke 失败时保留失败 raw/日志，先定位原因，不偷偷替换；
-- 两个 smoke 都通过前不开始正式六进程 benchmark；
-- 不产生性能结论。
+- 两份 smoke 永不计入正式六次实验；
+- 不因 smoke 的运行时间或进度显示预判 Policy 性能；
+- 正式六份 raw 完整前不运行 aggregation；
+- aggregation、独立复算和结果文档完成前不产生性能结论。
 
 ### 完成标准
 
-- WSL2 在精确 clean commit 上通过完整测试；
-- 两种 Policy 的真实 Scheduler 身份与 CLI 请求一致；
-- 两份 smoke 都为 finished、64/64 valid、5,632 Token、CUDA synchronized、0 invalid/unmapped；
-- saturated admission 时间关系成立，raw 没有派生指标；
-- writer 的独占路径和双端 SHA-256 复验通过；
-- 独立 smoke 结果文档合并后，才进入正式固定六进程对照。
+- smoke 结果文档与状态日志通过审阅并合并；
+- 正式运行前 WSL 位于新的精确 clean `main`，103 tests 与 preflight 通过；
+- 六个全新进程严格满足固定 Policy 顺序和同一 comparison group；
+- 每份 raw 的 Policy/runtime、64 请求、5,632 Token、CUDA 同步、完成率和时间事实通过；
+- raw/log/hash 双端备份完成，没有删除、替换或静默重跑；
+- 上述门槛满足后，唯一下一切片才切换为正式离线 aggregation。
 
 ## 立即下一步
 
-1. 项目所有者打开 Windows、启动 WSL2，并确认可以开始。
-2. 同步本收口合并后的精确 `main`，完成 GPU/环境/模型/manifest preflight 与 103 tests。
-3. 严格串行运行 FCFS smoke 和 Candidate smoke，封存 raw/log/hash；未通过前不进入正式六次对照。
+1. 审阅本次纯文档差异，确认 smoke 身份、哈希、命令纠正和不产生性能结论的边界。
+2. 创建并合并独立 smoke 证据 PR；本 PR 不修改代码或运行正式实验。
+3. 合并后同步新的精确 `main` 到 WSL，重新 preflight，再开始固定六进程正式对照。
 
 ## 已推迟、当前不决策
 

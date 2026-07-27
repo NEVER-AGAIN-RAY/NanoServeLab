@@ -164,3 +164,14 @@
 - 合并后的 clean `main` 完成最终 Mac 验收：轻量全套 103 tests 通过；Stage 3 Policy/driver/aggregator 相关 `py_compile` 通过；两套 CLI help 与 fresh import 不加载 torch；冻结 manifest SHA-256 重算为 `aa1d4e345e0e9f599bd43093bd5b9214476aa3145ee910cc9137d0b62754767d`；`git diff --check` 通过。
 - 远端 `main` 精确为 `21e3f755cb403d5c0fb632cd91676dcee3071753`，没有 open PR，GitHub keyring 登录正常。Mac 可完成的 Stage 3 实现、测试、raw 和 aggregation 证据链至此全部交付；唯一下一门槛切换为 Windows WSL2 上 FCFS 与 `prompt-length-v1` 各一次真实 CUDA smoke。
 - 最终 Mac→WSL2 状态切换以提交 `8668625164bb0a84c2c8cd27d80eedaac6f3204e` 创建纯文档 Draft [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29)，目标为 `main`，初始范围仅 2 个状态文档、32 additions / 24 deletions；没有代码、CUDA、raw、benchmark 或性能结论。
+
+## 2026-07-27
+
+- [PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29) 已以 merge commit `a97ec4dc7970cae1c51d094f1c1276ecb0f987fc` 合并；Mac `main` 与 `origin/main` clean 对齐。
+- 通过 Tailscale SSH 连接 WSL2 `LAPTOP-DU86ITPC`。WSL 直连 GitHub fetch 本轮未更新 `origin/main`，因此使用 Mac clean `main` 生成完整 Git bundle；Mac/WSL bundle SHA-256 均为 `226aef5b79db1870ebdfe1337264d0b2dc77bc8ede61c73590646c12d35b2165`。WSL 只更新 `origin/main` 并创建独立分支 `codex/wsl-stage3-smoke-20260727`，没有覆盖阶段 2 分支。
+- WSL preflight 核对精确 clean commit、RTX 4060 Laptop GPU、驱动 555.97、PyTorch 2.4.0+cu124、CUDA 12.4、Qwen3-0.6B revision、1,503,300,328 Bytes 权重及其既有 SHA-256、64 请求 manifest 和无 GPU compute process；最小 CUDA Tensor 运算成功，完整 `Ran 103 tests / OK`。
+- 第一次 preflight 命令误用不存在的 `WORKLOAD_MANIFEST_SHA256`，在模型启动前停止；改用源码实际公开的 `EXPECTED_MANIFEST_SHA256` 后通过。FCFS 核心 raw 校验后的首次哈希命令又因缺少闭合引号停止，随后独立补跑哈希、GPU 空闲和 Git clean。两次命令错误都没有构造额外 LLM、修改或替换 raw。
+- `fcfs-v1` 和 `prompt-length-v1` 各由一个全新真实进程严格串行完成 smoke。两份 schema v2 raw 均为 `finished`、64/64 请求、5,632 actual Output Token、requested/actual Policy 一致、`runtime_verified=true`、`cuda_synchronized=true`、0 unmapped；运行前后 tracked worktree clean且无残留 GPU compute process。
+- 独立标准库校验确认 saturated admission，并从 `first_scheduled` 时间戳识别两个 Prefill 波次：FCFS 第一波次为 45 个请求（34 short / 11 long），Candidate 为 58 个请求（48 short / 10 long），与冻结 Policy 和 16,384 Token 批预算一致。这是行为证据，不是性能比较。
+- 两份 raw、两份完整 driver log、preflight/tests 和 validation 已在 WSL 与 Mac 的 Git 忽略目录双端保存；Mac 按同一 `SHA256SUMS` 六项全部通过，清单自身 SHA-256 为 `f6499fb6c63f4e91a57eb1e174f0bd6a8c14f5bdc411556adbd4005b1d9eb4bb`。
+- 从 clean `main` 创建 `codex/stage3-cuda-smoke-results` 纯文档分支，新增 `docs/experiments/stage3-scheduling-smoke-validation-2026-07-27.md` 并同步唯一状态入口。下一门槛是审阅合并 smoke 证据；合并后才在新的精确 clean `main` 上运行正式六进程对照。
