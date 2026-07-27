@@ -175,3 +175,6 @@
 - 独立标准库校验确认 saturated admission，并从 `first_scheduled` 时间戳识别两个 Prefill 波次：FCFS 第一波次为 45 个请求（34 short / 11 long），Candidate 为 58 个请求（48 short / 10 long），与冻结 Policy 和 16,384 Token 批预算一致。这是行为证据，不是性能比较。
 - 两份 raw、两份完整 driver log、preflight/tests 和 validation 已在 WSL 与 Mac 的 Git 忽略目录双端保存；Mac 按同一 `SHA256SUMS` 六项全部通过，清单自身 SHA-256 为 `f6499fb6c63f4e91a57eb1e174f0bd6a8c14f5bdc411556adbd4005b1d9eb4bb`。
 - 从 clean `main` 创建 `codex/stage3-cuda-smoke-results` 纯文档分支，新增 `docs/experiments/stage3-scheduling-smoke-validation-2026-07-27.md` 并同步唯一状态入口。下一门槛是审阅合并 smoke 证据；合并后才在新的精确 clean `main` 上运行正式六进程对照。
+- smoke 证据分支经本地差异、证据清单和远端状态复验：3 个预期文档文件，`SHA256SUMS` 六项全部通过且清单自身 SHA-256 仍为 `f6499fb6c63f4e91a57eb1e174f0bd6a8c14f5bdc411556adbd4005b1d9eb4bb`；GitHub 无评论、review 或 check，状态为 `CLEAN / MERGEABLE`。
+- [PR #30](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/30) 已以 merge commit `b330ede84fc3a155299c252749e3e6dbdb19ac96` 合并到 `main`。smoke 身份、原始事实、命令纠正、哈希和“不产生性能结论”的边界正式固定。
+- 从该精确 `main` 创建纯文档分支 `codex/stage3-formal-run-handoff`，把唯一下一目标切换为正式六进程双 Policy 对照；本收口不修改 Scheduler、driver、aggregation 或 workload，也不运行 CUDA 或生成实验结果。

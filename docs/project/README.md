@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-07-27（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；Mac 侧代码与合约已完成，WSL2 双 Policy 真实 CUDA smoke 已通过，尚未运行正式六进程对照
-- 当前主线：[PR #29](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/29) 已合并；精确 clean `main` `a97ec4d` 的 103 tests、FCFS/Candidate 独立 CUDA smoke、双端 raw/log/hash 复验均通过；当前纯文档切片固定 smoke 证据，合并后才进入正式六进程对照
+- 当前主线：[PR #30](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/30) 已以 merge commit `b330ede` 合并；FCFS/Candidate 独立 CUDA smoke 及双端 raw/log/hash 已固定，当前唯一目标是在新的精确 clean `main` 上完成正式六进程对照
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -170,16 +170,15 @@
 
 ### 目标名称
 
-**阶段 3 第八切片：收口双 Policy CUDA smoke 并准备正式六进程对照**
+**阶段 3 第九切片：正式六进程双 Policy 对照**
 
 ### 为什么现在做
 
-真实 GPU 路径已经证明两种 Policy 能完成 tokenizer、模型加载、CUDA Graph、saturated Prefill/Decode、timing recorder 和 schema v2 写出。现在必须先把 smoke 的身份、原始事实、哈希、命令纠正和结论边界固定为可审阅文档；只有该证据切片合并后，才允许在同一个新 clean commit 上启动正式六进程对照。
+真实 GPU 路径已经证明两种 Policy 能完成 tokenizer、模型加载、CUDA Graph、saturated Prefill/Decode、timing recorder 和 schema v2 写出；smoke 证据已经由 PR #30 固定并合并。现在按冻结顺序执行正式六进程对照，只采集原始事实，不在六份 raw 完整前运行 aggregation。
 
 ### 本轮实现
 
-- 审阅并合并 `stage3-scheduling-smoke-validation-2026-07-27.md` 及同步状态文档；
-- 合并后把 WSL 同步到新的精确 clean `main`，重新核对 GPU、模型、manifest、103 tests 和空输出目录；
+- 把 WSL 同步到新的精确 clean `main`，重新核对 GPU、模型、manifest、103 tests 和空输出目录；
 - 为正式实验创建此前不存在的 comparison group 和证据目录；
 - 严格按 `FCFS-1 → Candidate-1 → Candidate-2 → FCFS-2 → FCFS-3 → Candidate-3` 串行运行六个全新进程；
 - 保留任何失败 raw/log，不删除、替换或静默重跑；
@@ -187,7 +186,7 @@
 
 ### 明确范围
 
-当前文档切片只收口已经发生的 smoke 事实；后续正式运行只执行已冻结实验：
+本切片只执行已冻结实验并封存正式 raw：
 
 - 不修改 Scheduler、driver、aggregation、模型参数或冻结 workload；
 - 不实现显式 Priority、Aging 或 Prefix Cache 感知；
@@ -198,7 +197,6 @@
 
 ### 完成标准
 
-- smoke 结果文档与状态日志通过审阅并合并；
 - 正式运行前 WSL 位于新的精确 clean `main`，103 tests 与 preflight 通过；
 - 六个全新进程严格满足固定 Policy 顺序和同一 comparison group；
 - 每份 raw 的 Policy/runtime、64 请求、5,632 Token、CUDA 同步、完成率和时间事实通过；
@@ -207,9 +205,9 @@
 
 ## 立即下一步
 
-1. 审阅本次纯文档差异，确认 smoke 身份、哈希、命令纠正和不产生性能结论的边界。
-2. 创建并合并独立 smoke 证据 PR；本 PR 不修改代码或运行正式实验。
-3. 合并后同步新的精确 `main` 到 WSL，重新 preflight，再开始固定六进程正式对照。
+1. 合并本次纯文档状态收口，得到正式实验使用的精确 clean `main`。
+2. 同步该提交到 WSL，完成环境、模型、manifest、103 tests、Git clean 和空输出目录 preflight。
+3. 严格按冻结顺序运行六个全新进程，逐次保留 raw/log；全部验证后双端封存并生成 `SHA256SUMS`。
 
 ## 已推迟、当前不决策
 
