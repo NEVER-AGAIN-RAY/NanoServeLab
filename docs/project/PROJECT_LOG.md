@@ -194,3 +194,12 @@
 - aggregate SHA-256 为 `2f1408c4c265962c5ec6a9ebd3628248f63d77f1b0e4662781d8d8d9371a51b7`；aggregate、两份 independent validation、byte-identical replay、overwrite log 和 correction notes 共 6 项清单全部通过，`SHA256SUMS` 自身 SHA-256 为 `c38101abca87100a0bf04bcf30a33aebb3a07def74fdf31489b928e0692d9f67`。
 - 两次命令错误均被保留：首次 CLI help 从 raw 子目录找不到 `research/`，首次 replay 从 `/private/tmp` 缺少仓库 import path；两者都在正式写入或 replay 创建前停止，没有修改 raw/aggregate 或运行 CUDA。
 - 当前结论是 `prompt-length-v1` 在本固定实验中未证明收益且观察到退化/高波动；`n=3` 不支持普遍或统计显著结论。唯一下一目标是审阅合并结果，再做 Queue Time→TTFT/E2E 和 Candidate run 分化的只读机制复盘，不立即增加新策略。
+- 正式结果 [PR #33](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/33) 经核对为 3 个预期文档、无评论/review/check、`CLEAN / MERGEABLE`，以 merge commit `d881f92675cf69b082f137c91f42cc10b7c7ba1b` 合并。
+- 从该 clean main 创建 `codex/stage3-mechanism-review`，未运行 CUDA 或新 benchmark，只读将每个请求拆为 Queue、首次调度→首 Token、首 Token→完成，并按 1 ms 事件间隔重建两次 Prefill 波。
+- FCFS 第一波固定为 45 请求（34 short/11 long）、15,616 Token；Candidate 为 58 请求（48 short/10 long）、16,384 Token。Candidate 的 48 个 short 全在第一波，Queue 约 1 ms，但首次调度发生在模型执行前，所以第一波 GPU 时间仍完整进入 TTFT。
+- Candidate 三次第一波耗时约 996.587、1,889.771、2,294.203 ms；FCFS 为 1,043.465、978.379、967.462 ms。Candidate run 2/3 的第二波与全部 Prefill 后阶段也变慢，说明退化不只是 6 个 long 在第二波等待。
+- 冻结 workload 的 64 个完整 256-Token Prompt Block 全部唯一，Prefix Cache 无共享命中，不能解释 Policy 或跨 run 差异。warmup 首 Token 后阶段约 700–806 ms 且未复现 measured 分化，但 warmup 的 3-Token/1-request 形状不能代表正式大 Prefill。
+- 现有 raw 能证明阶段位置、批形状和 Prefix Cache 排除，不能证明逐 step 执行、KV/preemption、JIT/kernel 或 GPU 温度/时钟/功耗原因。任何单一根因表述都将超出证据。
+- 只读机制证据保存在 Git 忽略目录，`mechanism-analysis.json` 为 18,786 Bytes、SHA-256 `f04c11296161874d0ca739452152ee7b12300a74dd9269e3b0b60fe87dbfd54b`；其 `SHA256SUMS` 自身 SHA-256 为 `e86198623c779ea6ef43e39be6557ea065299551095ae957b79170a09320c999`。
+- 首次复验旧 raw/aggregate 清单时误从仓库根目录执行相对路径清单，只读报告无法读取；分别切换到两个证据目录后，14 项 raw 与 6 项 aggregate 全部 `OK`，自身哈希不变。该命令错误没有修改证据。
+- 唯一下一目标切换为审阅机制复盘、完成所有者理解门槛，再冻结最小 diagnostic trace 合约；在此之前不实现新 Policy 或运行新正式实验。

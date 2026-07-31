@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-07-27（Asia/Shanghai）
-- 当前阶段：阶段 3——调度策略比较；第一轮 FCFS vs `prompt-length-v1` 正式 raw、aggregation、独立复算和哈希封存已完成
-- 当前主线：[PR #32](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/32) 已以 merge commit `2cd80a8` 合并；正式 comparison 有效，但 Candidate 平均 Output Token/s 低 16.06% 且触发吞吐/公平性警戒；当前纯文档切片固定该负结果
+- 当前阶段：阶段 3——调度策略比较；第一轮正式对照已完整收口，现有 raw 的只读机制复盘已完成
+- 当前主线：[PR #33](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/33) 已以 merge commit `d881f92` 合并；Candidate 负结果已固定，机制复盘确认 Queue 改善被首次调度后的 Prefill/后续成本超过，但现有证据不能归因 Candidate 跨 run 波动
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -39,6 +39,7 @@
 | `docs/experiments/stage3-scheduling-smoke-validation-2026-07-27.md` | FCFS/Candidate 真实 CUDA smoke、Policy 身份、Prefill 波次、raw/log/hash 与限制 | 固定行为门槛；不计入正式六进程对照，不产生性能结论 |
 | `docs/experiments/stage3-scheduling-results-2026-07-27.md` | 正式六进程 raw、固定顺序、逐次身份、验证、双端哈希与限制 | 固定原始实验事实；不派生指标，不产生性能结论 |
 | `docs/experiments/stage3-scheduling-aggregation-results-2026-07-27.md` | 正式 aggregate、完整统计、Policy 差值、警戒、独立复算、哈希与结论边界 | 固定第一轮调度对照结果；保留负结果，不作普遍外推 |
+| `docs/experiments/stage3-scheduling-mechanism-review-2026-07-27.md` | Queue/Prefill-to-first-output/完成阶段拆分、批形状、Prefix Cache 排除与证据缺口 | 只读解释现有结果；不冒充因果证明或新实验 |
 | `environment/mac.md` | macOS 开发环境事实 | 环境事实变化时更新 |
 | `environment/wsl2.md` | WSL2、GPU、CUDA、Python 与模型环境事实 | readiness 或环境事实变化时更新 |
 | PR、提交与测试输出 | 具体代码差异和验证证据 | 通过链接或提交号引用，不在文档中复制大段内容 |
@@ -100,6 +101,7 @@
 | 阶段 3 offline Policy aggregation | 已合并 | [PR #28](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/28)，merge `21e3f75` | 严格六 run 对照、差值、最坏请求和预声明警戒线；Mac 全套 103 tests |
 | 阶段 3 双 Policy CUDA smoke | 已合并 | [PR #30](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/30)，merge `b330ede` | 两种 Policy 真实 CUDA 路径和行为门槛 |
 | 阶段 3 正式六进程 raw | 已合并 | [PR #32](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/32)，merge `2cd80a8` | 384/384 finished、固定顺序、双端 raw/log/hash |
+| 阶段 3 首轮正式对照结果 | 已合并 | [PR #33](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/33)，merge `d881f92` | Candidate 负结果、完整统计、独立复算与结论边界 |
 
 ### 阶段 1 最终交付
 
@@ -164,6 +166,9 @@
 - [PR #32](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/32) 经远端范围核对后以 merge commit `2cd80a804fba9a3a29d3405937436916cd19775f` 合并；从该 clean main 创建 `codex/stage3-aggregation-results`，复验 14 项 raw 证据后对六份显式输入执行一次正式 `NSL-S3-AGG-v1` 独占写入。
 - comparison 有效，FCFS 与 Candidate 均为 192/192 valid、0 invalid、0 unmapped。FCFS Output Token/s 为 `745.100559 ± 2.158375`，Candidate 为 `625.431076 ± 109.583382`；Candidate − FCFS 平均差值 `-16.060850%`，吞吐退化和公平性警戒均为 true。
 - 独立标准库重算全部请求指标、吞吐、统计、差值和 12 个 fairness item 均一致，补充校验逐字段覆盖 96 个 latency delta；相同创建时间重放字节一致，既有输出拒绝覆盖。aggregate SHA-256 为 `2f1408c4c265962c5ec6a9ebd3628248f63d77f1b0e4662781d8d8d9371a51b7`，派生证据清单自身 SHA-256 为 `c38101abca87100a0bf04bcf30a33aebb3a07def74fdf31489b928e0692d9f67`。
+- [PR #33](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/33) 经远端范围核对后以 merge commit `d881f92675cf69b082f137c91f42cc10b7c7ba1b` 合并；从该 clean main 创建 `codex/stage3-mechanism-review`，只读拆分六份 raw 的 Queue、首次调度→首 Token 和首 Token→完成阶段。
+- Candidate 48 个 short 全部进入第一 Prefill 波，所以其 Queue 约 1 ms；该波为 58 请求/16,384 Token，GPU 执行发生在 `first_scheduled` 之后并计入 TTFT。Candidate 三次第一波约 997/1,890/2,294 ms，而 FCFS 固定 45 请求/15,616 Token且约 1,043/978/967 ms。
+- workload 的 64 个完整 256-Token Prompt Block 全部唯一，Prefix Cache 命中被排除。Candidate run 2/3 在第二 Prefill 和全部 Prefill 后阶段也变慢；现有 raw 缺少逐 step、KV/preemption 和 GPU telemetry，不能把分化归因到 JIT、kernel、温度、时钟或某个 Scheduler 分支。
 
 ### 环境与阻塞
 
@@ -174,53 +179,53 @@
 - 阶段 1 的三次 measured workload 均出现 PyTorch Dynamo `accumulated_cache_size_limit (256)` 警告，但都正常完成；当时没有为了改善数字而改变 cache limit。阶段 1 运行期间未连续记录温度、功耗或时钟，stdout/stderr 也未单独归档；阶段 2 正式 `n=3` 已单独保存完整日志，其限制见对应实验记录。
 - WSL 直连 GitHub fetch 曾在 2026-07-22 及更早轮次失败，当时用 Mac 生成的最小 Git bundle 同步 PR #11 精确提交；**2026-07-23 PR #17 smoke 轮次 WSL 直连 GitHub fetch 已成功**，不再需要 bundle。此前失败事实保留为历史，不表示当前仍阻塞。
 - Mac 的 GitHub 连接已于 2026-07-22 修复并复验：删除未监听的 `127.0.0.1:7897` 全局 Git 代理后，Git HTTPS 与 `gh` 恢复；`ChatGPT Codex Connector` 已安装到 `NEVER-AGAIN-RAY` 且仅授权 NanoServeLab，连接器仓库与 PR 读取通过。完整根因与恢复规则见 `environment/mac.md`。
-- 当前已有可复现 baseline、真实 CUDA timing 层、冻结 mixed workload、Stage 3 双 Policy、正式六进程 raw、aggregate 和独立复算。首个 Candidate 没有显示收益；这是正式负结果，不是项目失败。
-- 当前没有代码、环境、raw 或 aggregation 阻塞。下一门槛是先固定结果并完成所有者可理解的机制复盘，不立即增加 Priority、Aging 或新 workload。
+- 当前已有可复现 baseline、真实 CUDA timing 层、冻结 mixed workload、首个 Candidate 正式负结果和只读机制边界。一次独立研究闭环已经成立。
+- 当前阻塞不是代码或环境，而是观察粒度不足：现有四时间戳不能解释相同 Candidate 批形状的跨 run 分化。下一门槛是审阅机制复盘并由所有者理解，再预声明最小诊断 trace。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**阶段 3 第十一切片：收口首轮正式 aggregate 并进入机制复盘**
+**阶段 3 第十二切片：收口机制复盘并冻结最小诊断 trace 问题**
 
 ### 为什么现在做
 
-第一轮正式 comparison 已完成并得到负结果。现在先把完整统计、警戒、独立复算和结论边界固定；合并后再解释 Queue Time、TTFT 和重复间分化，避免为了追求创新点跳过理解。
+现有 raw 已足以解释 Queue Time 与 TTFT 的表面矛盾，也足以排除 Prefix Cache；但不足以定位 Candidate 跨 run 波动。现在先固定“知道什么/不知道什么”，让后续 trace 只回答必要问题。
 
 ### 本轮实现
 
-- 审阅并合并 `stage3-scheduling-aggregation-results-2026-07-27.md` 及同步状态文档；
-- 核对文档与 aggregate/validation 的逐表一致性；
-- 合并后只读分析 short Queue Time 与 TTFT/E2E 的分离；
-- 判断 Candidate run 1 与 run 2/3 的差异能否由现有 raw 解释；
-- 若证据不足，先写预声明 trace 问题与最小观测方案，不直接实现新 Policy。
+- 审阅并合并 `stage3-scheduling-mechanism-review-2026-07-27.md` 及同步状态文档；
+- 由项目所有者复述 Queue Time 事件边界、两波 Prefill 和现有证据缺口；
+- 冻结 diagnostic trace 的问题、字段、开销门槛和新实验身份；
+- 先用 CPU/fake-clock 测试验证 trace 只读性和关闭时等价；
+- 再决定是否实施 WSL diagnostic smoke，不直接运行新的正式 benchmark。
 
 ### 明确范围
 
-本切片只收口已经发生的正式 aggregate 并准备理解结果：
+本切片只收口只读机制复盘并定义诊断问题：
 
 - 不修改 Scheduler、driver、aggregation、模型参数或冻结 workload；
 - 不实现显式 Priority、Aging 或 Prefix Cache 感知；
 - 两份 smoke 永不计入正式六次实验；
 - 不因 smoke 的运行时间或进度显示预判 Policy 性能；
 - 不修改、删除、替换或重跑正式 raw/aggregate；
-- 不把 `n=3` 描述成统计显著或普遍结论；
-- 不因负结果切换 workload、删除 Candidate run 2/3 或补跑替代；
-- 机制复盘完成前不实现 Priority、Aging 或 Prefix Cache 感知。
+- 不把 JIT、CUDA Graph、温度或 GPU 时钟猜测写成原因；
+- 不在 trace 合约前插桩或运行新诊断实验；
+- 不实现 Priority、Aging 或 Prefix Cache 感知。
 
 ### 完成标准
 
-- 正式 aggregate 结果文档与状态日志通过审阅并合并；
-- 文档逐项对应 aggregate、独立 validation 和 `SHA256SUMS`；
-- 如实报告吞吐/延迟退化、Candidate 高波动及两次命令纠正；
-- 明确区分本固定实验结论、机制假设和不可外推边界；
-- 上述门槛满足后，唯一下一切片切换为只读机制复盘。
+- 机制复盘文档与状态日志通过审阅并合并；
+- 阶段拆分逐项对应现有 raw，批形状和 Prefix Cache 排除可复算；
+- 明确区分已证事实、合理假设和缺失观测；
+- 所有者能够解释 Queue Time 改善为何不等于 TTFT 改善；
+- 上述门槛满足后，唯一下一切片切换为诊断 trace 合约。
 
 ## 立即下一步
 
-1. 审阅正式 aggregate 结果文档，核对完整统计、差值、警戒、哈希和负结果边界。
-2. 创建并合并独立结果 PR；本 PR 不修改代码、raw 或 aggregate。
-3. 合并后从现有证据解释 Queue Time 与 TTFT/E2E 分离，并决定是否需要预声明 trace 实验。
+1. 审阅机制复盘，核对三段时间、两波 Prefill、Prefix Cache 排除与“不能归因”的边界。
+2. 创建并合并独立机制复盘 PR；本 PR 不修改代码或运行实验。
+3. 合并后先完成所有者复述，再起草最小 diagnostic trace 合约。
 
 ## 已推迟、当前不决策
 
