@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-08-04（Asia/Shanghai）
-- 当前阶段：阶段 3——调度策略比较；第一轮正式对照与只读机制复盘已完整收口，正在冻结最小诊断 trace 合约
-- 当前主线：[PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35) 已创建为 Draft，只定义 `NSL-S3-DIAG-TRACE-v1`；[PR #34](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/34) 已以 merge commit `9aa2106` 固定 Candidate 负结果的机制边界
+- 当前阶段：阶段 3——调度策略比较；第一轮正式对照、机制复盘和最小 trace 合约已收口，正在实现只读 trace 核心
+- 当前主线：Draft [PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36) 实现可选 `DiagnosticTraceRecorder`、逐 step 事件接线和 CPU/fake-clock 测试；[PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35) 已以 merge commit `3007e0f` 固定 trace 合约
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -181,56 +181,54 @@
 - WSL 直连 GitHub fetch 曾在 2026-07-22 及更早轮次失败，当时用 Mac 生成的最小 Git bundle 同步 PR #11 精确提交；**2026-07-23 PR #17 smoke 轮次 WSL 直连 GitHub fetch 已成功**，不再需要 bundle。此前失败事实保留为历史，不表示当前仍阻塞。
 - Mac 的 GitHub 连接已于 2026-07-22 修复并复验：删除未监听的 `127.0.0.1:7897` 全局 Git 代理后，Git HTTPS 与 `gh` 恢复；`ChatGPT Codex Connector` 已安装到 `NEVER-AGAIN-RAY` 且仅授权 NanoServeLab，连接器仓库与 PR 读取通过。完整根因与恢复规则见 `environment/mac.md`。
 - 当前已有可复现 baseline、真实 CUDA timing 层、冻结 mixed workload、首个 Candidate 正式负结果和只读机制边界。一次独立研究闭环已经成立。
-- 当前阻塞不是代码或环境，而是观察粒度不足：现有四时间戳不能解释相同 Candidate 批形状的跨 run 分化。机制复盘与所有者的最小理解门槛已完成，当前门槛是先审阅合并 trace 合约，再实现只读观察层与 CPU/fake-clock 测试。
+- 当前阻塞不是代码或环境，而是观察粒度不足：现有四时间戳不能解释相同 Candidate 批形状的跨 run 分化。trace 合约已经合并；当前门槛是先让默认关闭的只读 recorder 与 CPU/fake-clock 测试通过审阅，再实现 JSONL/driver 边界并进入 WSL smoke。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**阶段 3 第十三切片：冻结最小 diagnostic trace 合约**
+**阶段 3 第十四切片：实现只读 diagnostic trace 核心**
 
 ### 为什么现在做
 
-机制复盘已经确认 Queue 改善被首次调度后的 Prefill 与后续成本超过，也排除了本 workload 的 Prefix Cache 共享命中；但现有 raw 没有逐 step 时间、KV/抢占或 Runner 路径。现在先冻结观察问题和证据边界，避免边看结果边增删字段。
+`NSL-S3-DIAG-TRACE-v1` 已经冻结。现在只实现能够产生合约核心 record 的最小运行时观察层，用确定性 CPU 证据证明它不参与调度，并把 JSONL、driver 与 WSL 行为验证留给后续切片。
 
 ### 本轮实现
 
-- 冻结 `NSL-S3-DIAG-TRACE-v1` 的五个诊断问题和逐 step 事件边界；
-- 固定分段 host 时钟、队列/批形状、KV/Prefix/抢占、Runner 路径与 Graph bucket 字段；
-- 固定 JSONL/raw 写入、10 MiB 单 run 上限、外部 GPU telemetry sidecar 与哈希边界；
-- 固定 recorder-off 等价、CPU/fake-clock 测试和 WSL trace-on/off 5% 开销门槛；
-- 预留独立 `NSL-S3-DIAG-v1` 身份，但不实现 trace 或运行诊断实验。
+- 新增默认关闭、keyword-only 注入的 `DiagnosticTraceRecorder`；
+- 在 `LLMEngine.step()` 记录 schedule、runner call 和 postprocess 的 host 边界；
+- 只读记录队列/KV 状态、批形状、Prefix hit、抢占和实际 Runner/Graph bucket 路径；
+- 返回不可变历史 snapshots，并显式拒绝缺失路径或非法时间戳；
+- 用 fake clock 和既有 Scheduler 回归验证 trace-on 语义与 recorder-off 基线。
 
 ### 明确范围
 
-本切片只定义 trace 合约：
+本切片只实现内存中的核心 record：
 
-- 不修改 Scheduler、ModelRunner、driver、aggregation、模型参数或冻结 workload；
+- 不修改调度排序、KV 决策、ModelRunner 执行、driver、aggregation、模型参数或冻结 workload；
 - 两份 smoke 永不计入正式六次实验；
 - 不因 smoke 的运行时间或进度显示预判 Policy 性能；
 - 不修改、删除、替换或重跑正式 raw/aggregate；
 - 不把 JIT、CUDA Graph、温度或 GPU 时钟猜测写成原因；
-- 不在合约审阅前插桩或运行新诊断实验；
+- 不实现 JSONL writer、GPU telemetry sidecar 或 WSL smoke；
 - 不实现 Priority、Aging 或 Prefix Cache 感知。
 
 ### 完成标准
 
-- 合约中的每个字段都对应现有 Scheduler、BlockManager、LLMEngine 或 ModelRunner 的明确事件；
-- host wall time、CUDA kernel time 和外部 telemetry 的证据边界不混淆；
-- recorder-off 等价、不可变记录、fake clock、写入与开销门槛均可测试；
-- 新诊断身份与第一轮正式 raw/aggregate 完全隔离；
-- 合约审阅合并后，唯一下一切片切换为 trace recorder 与 CPU 测试实现。
+- recorder 为 `None` 时不调用 trace clock 或采集 Scheduler snapshot；
+- 8 个 host 时间戳顺序固定，观察层快照开销不混入 schedule/runner/postprocess 分段；
+- Prefix hit 与 recovery、抢占释放与 Decode 扩容、实际 Graph bucket 可区分；
+- record/snapshots 不可变，非法或不完整 step 被拒绝；
+- 新测试与既有 Scheduler 生命周期、timing、snapshot 和 Policy 回归全部通过。
 
 ## 立即下一步
 
-1. 审阅 `stage3-diagnostic-trace-contract.md` 的问题、字段、5% 开销门槛和 10 MiB 上限。
-2. 审阅并合并独立 trace 合约 PR；本 PR 不修改运行时代码或运行实验。
-3. 合并后以独立切片实现可选 recorder、事件接线和 CPU/fake-clock 定向测试。
+1. 审阅 trace core 的默认关闭路径、时间边界和 Scheduler/Runner 只读接线。
+2. 审阅并合并独立 trace core PR；Mac 只运行轻量 CPU/静态门槛。
+3. 合并后以独立切片实现严格 JSONL writer、diagnostic driver 身份和对抗测试。
 
 ## 已推迟、当前不决策
 
-- Snapshot 是否直接接入 `LLMEngine.step()` 的可选 observer；
-- 是否导出 JSONL 作为实验原始 trace，以及长期原始数据的离机归档位置；
 - 开放式在线到达、Poisson 或固定速率 workload；
 - 第一种自定义调度评分公式；
 - 实验结果可视化与论文图表样式。

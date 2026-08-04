@@ -211,3 +211,8 @@
 - 起草 `NSL-S3-DIAG-TRACE-v1`：只回答逐 step 形状/时间、KV/抢占、Runner 路径与外部 GPU 状态五类问题；固定新的 `NSL-S3-DIAG-v1` 身份，与 `prompt-length-20260727-a` 正式证据完全分离。
 - 合约预声明 recorder-off 等价、不可变记录、CPU/fake-clock 测试、10 MiB 单 run 上限和 WSL trace-on/off 中位数不超过 5% 的工程门槛。本切片没有修改 Scheduler、ModelRunner、driver、workload 或正式 raw，没有运行 CUDA 或新 benchmark。
 - 合约与同步状态以提交 `8775876` 推送并创建 Draft [PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35)，目标为 `main`，初始范围为 3 个纯文档文件；下一门槛是审阅字段可实现性、证据边界与开销规则后再合并，不在本 PR 提前插桩。
+- PR #35 远端最终为 2 个提交、3 个预期文档、无评论/review/check、`CLEAN / MERGEABLE`，转 Ready 后以 merge commit `3007e0fa0bb26ce27edd5e3dc154a8503231df3d` 合并；从该精确 main 创建 `codex/stage3-diagnostic-trace-core`。
+- trace core 新增默认关闭的 `DiagnosticTraceRecorder`：每 step 保存不可变队列/KV、scheduled sequence、Prefix hit/recovery、抢占、实际 eager/CUDA Graph 路径与 bucket，以及 schedule/runner/postprocess 的 8 个 host 时间戳；measurement 内不写文件、不增加 CUDA synchronize。
+- `LLMEngine`、`Scheduler` 与 rank 0 `ModelRunner` 通过同一个 keyword-only recorder 接线；默认 `None` 不读 trace clock 或采集 snapshot。实际 Graph bucket 由 ModelRunner 使用并由同一纯选择函数测试，不由离线分析猜测。
+- Mac 轻量 bootstrap 下新 trace 7 tests 与既有 lifecycle/snapshot/request timing/FCFS/长度策略测试合计 27 项通过；相关 `py_compile` 与 `git diff --check` 通过。普通 `unittest` 仍因 Mac 未安装 `tqdm` 在 package eager import 阶段停止，未为此安装依赖或运行根目录 `uv sync`；未运行 CUDA、模型或 benchmark。
+- trace core 以提交 `a7e28c9` 推送并创建 Draft [PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36)，目标为 `main`，初始范围为 7 个预期代码、测试与状态文件；JSONL、driver、telemetry、WSL smoke 和开销结论均不在本 PR。

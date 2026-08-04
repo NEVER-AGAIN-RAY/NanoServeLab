@@ -16,6 +16,9 @@
 代码分区：多进程通信、模型预热与 KV 分配、Prefill/Decode 输入准备、模型
 执行与采样、CUDA Graph 捕获。该模块是 GPU 数据面，Scheduler/BlockManager
 则是 CPU 控制面；二者依靠相同的 Block ID 和 Sequence 进度保持同步。
+
+可选 diagnostic trace 只记录实际选择的 eager/CUDA Graph 路径与 Graph bucket，
+不增加同步点，也不改变模型输入、执行或采样。
 """
 
 import pickle
@@ -30,11 +33,19 @@ from nanovllm.models.qwen3 import Qwen3ForCausalLM
 from nanovllm.layers.sampler import Sampler
 from nanovllm.utils.context import set_context, get_context, reset_context
 from nanovllm.utils.loader import load_model
+from nanovllm.engine.diagnostic_trace import select_runner_path
 
 
 class ModelRunner:
 
-    def __init__(self, config: Config, rank: int, event: Event | list[Event]):
+    def __init__(
+        self,
+        config: Config,
+        rank: int,
+        event: Event | list[Event],
+        *,
+        diagnostic_trace_recorder=None,
+    ):
         self.config = config
         hf_config = config.hf_config
         self.block_size = config.kvcache_block_size
@@ -42,6 +53,7 @@ class ModelRunner:
         self.world_size = config.tensor_parallel_size
         self.rank = rank
         self.event = event
+        self.diagnostic_trace_recorder = diagnostic_trace_recorder
 
         dist.init_process_group("nccl", "tcp://localhost:2333", world_size=self.world_size, rank=rank)
         torch.cuda.set_device(rank)
@@ -213,13 +225,44 @@ class ModelRunner:
         return temperatures
 
     @torch.inference_mode()
-    def run_model(self, input_ids: torch.Tensor, positions: torch.Tensor, is_prefill: bool):
-        if is_prefill or self.enforce_eager or input_ids.size(0) > 512:
+    def run_model(
+        self,
+        input_ids: torch.Tensor,
+        positions: torch.Tensor,
+        is_prefill: bool,
+        sequence_count: int,
+    ):
+        input_token_count = input_ids.size(0)
+        execution_path, graph_bucket = select_runner_path(
+            is_prefill=is_prefill,
+            enforce_eager=self.enforce_eager,
+            input_token_count=input_token_count,
+            graph_buckets=getattr(self, "graph_bs", ()),
+        )
+        if execution_path != "decode_cuda_graph":
+            if self.diagnostic_trace_recorder is not None:
+                self.diagnostic_trace_recorder.record_runner_path(
+                    execution_path=execution_path,
+                    enforce_eager=self.enforce_eager,
+                    sequence_count=sequence_count,
+                    input_token_count=input_token_count,
+                    cuda_graph_bucket=None,
+                )
             return self.model.compute_logits(self.model(input_ids, positions))
         else:
-            bs = input_ids.size(0)
+            bs = input_token_count
             context = get_context()
-            graph = self.graphs[next(x for x in self.graph_bs if x >= bs)]
+            if graph_bucket is None:
+                raise RuntimeError("CUDA Graph execution path requires a graph bucket")
+            if self.diagnostic_trace_recorder is not None:
+                self.diagnostic_trace_recorder.record_runner_path(
+                    execution_path="decode_cuda_graph",
+                    enforce_eager=self.enforce_eager,
+                    sequence_count=sequence_count,
+                    input_token_count=bs,
+                    cuda_graph_bucket=graph_bucket,
+                )
+            graph = self.graphs[graph_bucket]
             graph_vars = self.graph_vars
             graph_vars["input_ids"][:bs] = input_ids
             graph_vars["positions"][:bs] = positions
@@ -234,7 +277,7 @@ class ModelRunner:
     def run(self, seqs: list[Sequence], is_prefill: bool) -> list[int]:
         input_ids, positions = self.prepare_prefill(seqs) if is_prefill else self.prepare_decode(seqs)
         temperatures = self.prepare_sample(seqs) if self.rank == 0 else None
-        logits = self.run_model(input_ids, positions, is_prefill)
+        logits = self.run_model(input_ids, positions, is_prefill, len(seqs))
         token_ids = self.sampler(logits, temperatures).tolist() if self.rank == 0 else None
         reset_context()
         return token_ids

@@ -10,6 +10,7 @@
 - ``model_runner``：执行模型前向、KV Cache 写入和采样。
 - ``scheduler``：选择本轮请求并维护 waiting/running 状态。
 - ``ps`` / ``events``：张量并行从属进程及其同步事件。
+- ``diagnostic_trace_recorder``：默认关闭的逐 step 只读观察器。
 
 阅读顺序：``add_request()`` -> ``step()`` -> ``generate()``。注意 ModelRunner
 会先根据 GPU 显存写回 ``config.num_kvcache_blocks``，随后 Scheduler 才能创建
@@ -29,6 +30,7 @@ from nanovllm.engine.sequence import Sequence
 from nanovllm.engine.scheduler import Scheduler
 from nanovllm.engine.model_runner import ModelRunner
 from nanovllm.engine.request_timing import RequestTimingRecorder
+from nanovllm.engine.diagnostic_trace import DiagnosticTraceRecorder
 
 
 class LLMEngine:
@@ -38,6 +40,7 @@ class LLMEngine:
         model,
         *,
         timing_recorder: RequestTimingRecorder | None = None,
+        diagnostic_trace_recorder: DiagnosticTraceRecorder | None = None,
         **kwargs,
     ):
         config_fields = {field.name for field in fields(Config)}
@@ -53,10 +56,20 @@ class LLMEngine:
             process.start()
             self.ps.append(process)
             self.events.append(event)
-        self.model_runner = ModelRunner(config, 0, self.events)
+        self.model_runner = ModelRunner(
+            config,
+            0,
+            self.events,
+            diagnostic_trace_recorder=diagnostic_trace_recorder,
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)
         config.eos = self.tokenizer.eos_token_id
-        self.scheduler = Scheduler(config, timing_recorder=timing_recorder)
+        self.scheduler = Scheduler(
+            config,
+            timing_recorder=timing_recorder,
+            diagnostic_trace_recorder=diagnostic_trace_recorder,
+        )
+        self.diagnostic_trace_recorder = diagnostic_trace_recorder
         atexit.register(self.exit)
 
     def exit(self):
@@ -72,10 +85,19 @@ class LLMEngine:
         self.scheduler.add(seq)
 
     def step(self):
+        recorder = self.diagnostic_trace_recorder
+        if recorder is not None:
+            recorder.begin_step(self.scheduler)
         seqs, is_prefill = self.scheduler.schedule()
+        if recorder is not None:
+            recorder.after_schedule(self.scheduler, seqs, is_prefill)
         num_tokens = sum(seq.num_scheduled_tokens for seq in seqs) if is_prefill else -len(seqs)
         token_ids = self.model_runner.call("run", seqs, is_prefill)
+        if recorder is not None:
+            recorder.after_runner()
         self.scheduler.postprocess(seqs, token_ids, is_prefill)
+        if recorder is not None:
+            recorder.finish_step(self.scheduler)
         outputs = [(seq.seq_id, seq.completion_token_ids) for seq in seqs if seq.is_finished]
         return outputs, num_tokens
 
