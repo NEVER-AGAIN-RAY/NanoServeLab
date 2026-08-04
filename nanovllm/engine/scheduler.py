@@ -20,8 +20,9 @@
 重要约束：当前每个批次只能是纯 Prefill 或纯 Decode；只要成功调度
 Prefill 就会立即返回，因此该文件的队列策略会直接影响 TTFT、TPOT 和公平性。
 
-可选 ``timing_recorder`` 只观察生命周期事件，不参与排序、准入、抢占或
-KV 决策；默认 ``None`` 时行为与上游一致。
+可选 ``timing_recorder`` 观察请求生命周期，可选 ``diagnostic_trace_recorder``
+观察逐 step 的 Prefix 命中与抢占事件；二者都不参与排序、准入、抢占或 KV
+决策，默认 ``None`` 时行为与上游一致。
 """
 
 from __future__ import annotations
@@ -43,7 +44,7 @@ if TYPE_CHECKING:
 
 class Scheduler:
 
-    def __init__(self, config: Config, *, timing_recorder=None):
+    def __init__(self, config: Config, *, timing_recorder=None, diagnostic_trace_recorder=None):
         self.max_num_seqs = config.max_num_seqs
         self.max_num_batched_tokens = config.max_num_batched_tokens
         self.eos = config.eos
@@ -52,6 +53,7 @@ class Scheduler:
         self.waiting: deque[Sequence] = deque()
         self.running: deque[Sequence] = deque()
         self.timing_recorder = timing_recorder
+        self.diagnostic_trace_recorder = diagnostic_trace_recorder
         self.scheduling_policy = normalize_scheduling_policy(
             getattr(config, "scheduling_policy", FCFS_POLICY)
         )
@@ -86,6 +88,11 @@ class Scheduler:
                 num_cached_blocks = self.block_manager.can_allocate(seq)
                 if num_cached_blocks == -1:
                     break
+                if self.diagnostic_trace_recorder is not None:
+                    self.diagnostic_trace_recorder.record_prefix_cache_hit(
+                        seq.seq_id,
+                        num_cached_blocks,
+                    )
                 num_tokens = seq.num_tokens - num_cached_blocks * self.block_size
             else:
                 num_tokens = seq.num_tokens - seq.num_cached_tokens
@@ -125,6 +132,8 @@ class Scheduler:
         return scheduled_seqs, False
 
     def preempt(self, seq: Sequence):
+        if self.diagnostic_trace_recorder is not None:
+            self.diagnostic_trace_recorder.record_preemption(seq.seq_id)
         seq.status = SequenceStatus.WAITING
         seq.is_prefill = True
         self.block_manager.deallocate(seq)
