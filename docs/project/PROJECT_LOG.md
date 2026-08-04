@@ -210,3 +210,4 @@
 - 项目所有者确认理解 Queue Time 改善不保证 TTFT/E2E/吞吐改善：`first_scheduled` 位于 GPU Prefill 之前，Candidate 的首次调度后成本超过排队节省。该门槛不要求重读整个项目。
 - 起草 `NSL-S3-DIAG-TRACE-v1`：只回答逐 step 形状/时间、KV/抢占、Runner 路径与外部 GPU 状态五类问题；固定新的 `NSL-S3-DIAG-v1` 身份，与 `prompt-length-20260727-a` 正式证据完全分离。
 - 合约预声明 recorder-off 等价、不可变记录、CPU/fake-clock 测试、10 MiB 单 run 上限和 WSL trace-on/off 中位数不超过 5% 的工程门槛。本切片没有修改 Scheduler、ModelRunner、driver、workload 或正式 raw，没有运行 CUDA 或新 benchmark。
+- 合约与同步状态以提交 `8775876` 推送并创建 Draft [PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35)，目标为 `main`，初始范围为 3 个纯文档文件；下一门槛是审阅字段可实现性、证据边界与开销规则后再合并，不在本 PR 提前插桩。

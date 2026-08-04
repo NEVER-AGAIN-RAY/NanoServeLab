@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-08-04（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；第一轮正式对照与只读机制复盘已完整收口，正在冻结最小诊断 trace 合约
-- 当前主线：[PR #34](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/34) 已以 merge commit `9aa2106` 合并；Candidate 负结果与现有证据边界已固定，当前独立分支只定义 `NSL-S3-DIAG-TRACE-v1`，不插桩或运行新实验
+- 当前主线：[PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35) 已创建为 Draft，只定义 `NSL-S3-DIAG-TRACE-v1`；[PR #34](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/34) 已以 merge commit `9aa2106` 固定 Candidate 负结果的机制边界
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -224,7 +224,7 @@
 ## 立即下一步
 
 1. 审阅 `stage3-diagnostic-trace-contract.md` 的问题、字段、5% 开销门槛和 10 MiB 上限。
-2. 创建并合并独立 trace 合约 PR；本 PR 不修改运行时代码或运行实验。
+2. 审阅并合并独立 trace 合约 PR；本 PR 不修改运行时代码或运行实验。
 3. 合并后以独立切片实现可选 recorder、事件接线和 CPU/fake-clock 定向测试。
 
 ## 已推迟、当前不决策
