@@ -3,8 +3,8 @@
 > 新对话、新 AI 或中断恢复时先读本文件。它是“当前做到哪里、正在做什么、下一步做什么”的唯一事实入口。
 
 - 最后核对日期：2026-08-04（Asia/Shanghai）
-- 当前阶段：阶段 3——调度策略比较；第一轮正式对照、机制复盘和最小 trace 合约已收口，正在实现只读 trace 核心
-- 当前主线：Draft [PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36) 实现可选 `DiagnosticTraceRecorder`、逐 step 事件接线和 CPU/fake-clock 测试；[PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35) 已以 merge commit `3007e0f` 固定 trace 合约
+- 当前阶段：阶段 3——调度策略比较；第一轮正式对照、机制复盘、trace 合约和只读 trace core 已收口
+- 当前主线：[PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36) 已以 merge commit `33ce828` 合并；唯一下一目标是严格 JSONL writer 与 diagnostic driver 身份，不运行 CUDA 或新实验
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -181,51 +181,51 @@
 - WSL 直连 GitHub fetch 曾在 2026-07-22 及更早轮次失败，当时用 Mac 生成的最小 Git bundle 同步 PR #11 精确提交；**2026-07-23 PR #17 smoke 轮次 WSL 直连 GitHub fetch 已成功**，不再需要 bundle。此前失败事实保留为历史，不表示当前仍阻塞。
 - Mac 的 GitHub 连接已于 2026-07-22 修复并复验：删除未监听的 `127.0.0.1:7897` 全局 Git 代理后，Git HTTPS 与 `gh` 恢复；`ChatGPT Codex Connector` 已安装到 `NEVER-AGAIN-RAY` 且仅授权 NanoServeLab，连接器仓库与 PR 读取通过。完整根因与恢复规则见 `environment/mac.md`。
 - 当前已有可复现 baseline、真实 CUDA timing 层、冻结 mixed workload、首个 Candidate 正式负结果和只读机制边界。一次独立研究闭环已经成立。
-- 当前阻塞不是代码或环境，而是观察粒度不足：现有四时间戳不能解释相同 Candidate 批形状的跨 run 分化。trace 合约已经合并；当前门槛是先让默认关闭的只读 recorder 与 CPU/fake-clock 测试通过审阅，再实现 JSONL/driver 边界并进入 WSL smoke。
+- 当前阻塞不是代码或环境，而是诊断 artifact 链路尚未完成：内存 trace core 已合并，但还不能以严格、不可覆盖、可哈希的 JSONL 与 schema v3 raw 保存。下一门槛是先完成 writer/driver CPU 合约，再进入 WSL smoke。
 
 ## 全局决策：下一实现目标
 
 ### 目标名称
 
-**阶段 3 第十四切片：实现只读 diagnostic trace 核心**
+**阶段 3 第十五切片：实现 diagnostic JSONL writer 与 driver 身份**
 
 ### 为什么现在做
 
-`NSL-S3-DIAG-TRACE-v1` 已经冻结。现在只实现能够产生合约核心 record 的最小运行时观察层，用确定性 CPU 证据证明它不参与调度，并把 JSONL、driver 与 WSL 行为验证留给后续切片。
+内存 recorder 已能记录合约要求的逐 step 核心事实，但尚无正式 artifact 边界。现在只把不可变 snapshots 转成严格 JSONL，并为新的 `NSL-S3-DIAG-v1` driver/raw 固定身份、失败证据和防覆盖规则。
 
 ### 本轮实现
 
-- 新增默认关闭、keyword-only 注入的 `DiagnosticTraceRecorder`；
-- 在 `LLMEngine.step()` 记录 schedule、runner call 和 postprocess 的 host 边界；
-- 只读记录队列/KV 状态、批形状、Prefix hit、抢占和实际 Runner/Graph bucket 路径；
-- 返回不可变历史 snapshots，并显式拒绝缺失路径或非法时间戳；
-- 用 fake clock 和既有 Scheduler 回归验证 trace-on 语义与 recorder-off 基线。
+- 定义 schema v3 diagnostic raw 与 `run.trace.jsonl` header/step 结构；
+- snapshots 在 measurement 结束后一次序列化，严格拒绝非法类型、非有限数和不连续 step；
+- raw 引用 trace 文件名、字节数、SHA-256、record 数与 schema 身份；
+- 使用独占创建拒绝覆盖、符号链接和并发写入，并尽量保留失败证据；
+- fake engine/recorder 测试覆盖 finished、setup/runtime failure、mismatch、malformed 与 10 MiB 上限。
 
 ### 明确范围
 
-本切片只实现内存中的核心 record：
+本切片只实现离线写入与 driver 外层：
 
-- 不修改调度排序、KV 决策、ModelRunner 执行、driver、aggregation、模型参数或冻结 workload；
+- 不修改 Scheduler、BlockManager、ModelRunner、trace core 字段、aggregation、模型参数或冻结 workload；
 - 两份 smoke 永不计入正式六次实验；
 - 不因 smoke 的运行时间或进度显示预判 Policy 性能；
 - 不修改、删除、替换或重跑正式 raw/aggregate；
 - 不把 JIT、CUDA Graph、温度或 GPU 时钟猜测写成原因；
-- 不实现 JSONL writer、GPU telemetry sidecar 或 WSL smoke；
+- 不实现 GPU telemetry sidecar 或运行 WSL smoke；
 - 不实现 Priority、Aging 或 Prefix Cache 感知。
 
 ### 完成标准
 
-- recorder 为 `None` 时不调用 trace clock 或采集 Scheduler snapshot；
-- 8 个 host 时间戳顺序固定，观察层快照开销不混入 schedule/runner/postprocess 分段；
-- Prefix hit 与 recovery、抢占释放与 Decode 扩容、实际 Graph bucket 可区分；
-- record/snapshots 不可变，非法或不完整 step 被拒绝；
-- 新测试与既有 Scheduler 生命周期、timing、snapshot 和 Policy 回归全部通过。
+- JSONL header、step record 与 raw 引用可交叉验证，step 必须从 1 连续到终态；
+- writer 对同一 snapshots 与固定创建时间产生字节一致输出；
+- 输出路径已存在、悬空/普通符号链接和并发创建均显式拒绝；
+- 失败 artifact 不伪造 runtime Policy、trace 完整性或 CUDA 同步；
+- driver/writer 对抗测试与现有 trace/Scheduler 回归通过。
 
 ## 立即下一步
 
-1. 审阅 trace core 的默认关闭路径、时间边界和 Scheduler/Runner 只读接线。
-2. 审阅并合并独立 trace core PR；Mac 只运行轻量 CPU/静态门槛。
-3. 合并后以独立切片实现严格 JSONL writer、diagnostic driver 身份和对抗测试。
+1. 复用 Stage 3 driver 的环境/Policy/workload 身份，但使用新的 schema v3 和实验 ID。
+2. 实现严格 JSONL 序列化、raw 引用、10 MiB 门槛与独占 writer 的 CPU 测试。
+3. 审阅合并后再实现 GPU telemetry sidecar 与 WSL diagnostic smoke handoff。
 
 ## 已推迟、当前不决策
 
