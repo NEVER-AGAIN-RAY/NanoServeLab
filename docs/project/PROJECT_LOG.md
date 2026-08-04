@@ -216,3 +216,5 @@
 - `LLMEngine`、`Scheduler` 与 rank 0 `ModelRunner` 通过同一个 keyword-only recorder 接线；默认 `None` 不读 trace clock 或采集 snapshot。实际 Graph bucket 由 ModelRunner 使用并由同一纯选择函数测试，不由离线分析猜测。
 - Mac 轻量 bootstrap 下新 trace 7 tests 与既有 lifecycle/snapshot/request timing/FCFS/长度策略测试合计 27 项通过；相关 `py_compile` 与 `git diff --check` 通过。普通 `unittest` 仍因 Mac 未安装 `tqdm` 在 package eager import 阶段停止，未为此安装依赖或运行根目录 `uv sync`；未运行 CUDA、模型或 benchmark。
 - trace core 以提交 `a7e28c9` 推送并创建 Draft [PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36)，目标为 `main`，初始范围为 7 个预期代码、测试与状态文件；JSONL、driver、telemetry、WSL smoke 和开销结论均不在本 PR。
+- PR #36 第二轮审查确认 TP worker、warmup/Graph 捕获顺序、no-op 事件和 recorder-off 边界；远端为 2 个提交、7 个预期文件、无评论/review/check、`CLEAN / MERGEABLE`，以 merge commit `33ce828b791a4b68e3b688038b7eed0d98e23b12` 合并。
+- 本地 `main` 已 fast-forward 到 `33ce828` 并创建纯文档分支 `codex/stage3-diagnostic-trace-core-closeout`。唯一下一目标切换为严格 JSONL writer 与 `NSL-S3-DIAG-v1` driver/schema v3 身份；在该 CPU artifact 合约合并前不运行 WSL smoke。
