@@ -4,7 +4,7 @@
 
 - 最后核对日期：2026-08-04（Asia/Shanghai）
 - 当前阶段：阶段 3——调度策略比较；第一轮正式对照、机制复盘和最小 trace 合约已收口，正在实现只读 trace 核心
-- 当前主线：[PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35) 已以 merge commit `3007e0f` 合并；当前独立分支实现可选 `DiagnosticTraceRecorder`、逐 step 事件接线和 CPU/fake-clock 测试，不运行 CUDA 或新实验
+- 当前主线：Draft [PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36) 实现可选 `DiagnosticTraceRecorder`、逐 step 事件接线和 CPU/fake-clock 测试；[PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35) 已以 merge commit `3007e0f` 固定 trace 合约
 - 基线结果：1014.433126 ± 4.212859 output Token/s（mean ± sample SD，`n=3`）；这是当前固定条件的参考值，不是性能提升结论
 - 阶段 2 mixed baseline：851.900666 ± 22.081773 output Token/s（mean ± sample SD，`n=3`，`NSL-S2-SAT-v1`）；与阶段 1 workload 不同，不能直接比较
 - 阶段 2 状态：已完成；指标、workload、driver、正式 `n=3` raw、aggregation、独立复算和固定结果记录均已交付
@@ -224,7 +224,7 @@
 ## 立即下一步
 
 1. 审阅 trace core 的默认关闭路径、时间边界和 Scheduler/Runner 只读接线。
-2. 创建并合并独立 trace core PR；Mac 只运行轻量 CPU/静态门槛。
+2. 审阅并合并独立 trace core PR；Mac 只运行轻量 CPU/静态门槛。
 3. 合并后以独立切片实现严格 JSONL writer、diagnostic driver 身份和对抗测试。
 
 ## 已推迟、当前不决策

@@ -215,3 +215,4 @@
 - trace core 新增默认关闭的 `DiagnosticTraceRecorder`：每 step 保存不可变队列/KV、scheduled sequence、Prefix hit/recovery、抢占、实际 eager/CUDA Graph 路径与 bucket，以及 schedule/runner/postprocess 的 8 个 host 时间戳；measurement 内不写文件、不增加 CUDA synchronize。
 - `LLMEngine`、`Scheduler` 与 rank 0 `ModelRunner` 通过同一个 keyword-only recorder 接线；默认 `None` 不读 trace clock 或采集 snapshot。实际 Graph bucket 由 ModelRunner 使用并由同一纯选择函数测试，不由离线分析猜测。
 - Mac 轻量 bootstrap 下新 trace 7 tests 与既有 lifecycle/snapshot/request timing/FCFS/长度策略测试合计 27 项通过；相关 `py_compile` 与 `git diff --check` 通过。普通 `unittest` 仍因 Mac 未安装 `tqdm` 在 package eager import 阶段停止，未为此安装依赖或运行根目录 `uv sync`；未运行 CUDA、模型或 benchmark。
+- trace core 以提交 `a7e28c9` 推送并创建 Draft [PR #36](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/36)，目标为 `main`，初始范围为 7 个预期代码、测试与状态文件；JSONL、driver、telemetry、WSL smoke 和开销结论均不在本 PR。
