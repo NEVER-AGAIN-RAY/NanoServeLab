@@ -203,3 +203,11 @@
 - 只读机制证据保存在 Git 忽略目录，`mechanism-analysis.json` 为 18,786 Bytes、SHA-256 `f04c11296161874d0ca739452152ee7b12300a74dd9269e3b0b60fe87dbfd54b`；其 `SHA256SUMS` 自身 SHA-256 为 `e86198623c779ea6ef43e39be6557ea065299551095ae957b79170a09320c999`。
 - 首次复验旧 raw/aggregate 清单时误从仓库根目录执行相对路径清单，只读报告无法读取；分别切换到两个证据目录后，14 项 raw 与 6 项 aggregate 全部 `OK`，自身哈希不变。该命令错误没有修改证据。
 - 唯一下一目标切换为审阅机制复盘、完成所有者理解门槛，再冻结最小 diagnostic trace 合约；在此之前不实现新 Policy 或运行新正式实验。
+
+## 2026-08-04
+
+- 远端核验确认 [PR #34](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/34) 已于 2026-07-31 合并，merge commit 为 `9aa21066f90df867c97124be6486e5d3e9ff011f`；本地 `main` 已 fast-forward 到该精确提交并创建独立分支 `codex/stage3-diagnostic-trace-contract`。
+- 项目所有者确认理解 Queue Time 改善不保证 TTFT/E2E/吞吐改善：`first_scheduled` 位于 GPU Prefill 之前，Candidate 的首次调度后成本超过排队节省。该门槛不要求重读整个项目。
+- 起草 `NSL-S3-DIAG-TRACE-v1`：只回答逐 step 形状/时间、KV/抢占、Runner 路径与外部 GPU 状态五类问题；固定新的 `NSL-S3-DIAG-v1` 身份，与 `prompt-length-20260727-a` 正式证据完全分离。
+- 合约预声明 recorder-off 等价、不可变记录、CPU/fake-clock 测试、10 MiB 单 run 上限和 WSL trace-on/off 中位数不超过 5% 的工程门槛。本切片没有修改 Scheduler、ModelRunner、driver、workload 或正式 raw，没有运行 CUDA 或新 benchmark。
+- 合约与同步状态以提交 `8775876` 推送并创建 Draft [PR #35](https://github.com/NEVER-AGAIN-RAY/NanoServeLab/pull/35)，目标为 `main`，初始范围为 3 个纯文档文件；下一门槛是审阅字段可实现性、证据边界与开销规则后再合并，不在本 PR 提前插桩。
